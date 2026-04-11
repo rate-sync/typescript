@@ -180,7 +180,6 @@ describe('createMetrics', () => {
     expect(metrics.totalWaitTimeMs).toBe(0);
     expect(metrics.avgWaitTimeMs).toBe(0);
     expect(metrics.maxWaitTimeMs).toBe(0);
-    expect(metrics.casFailures).toBe(0);
     expect(metrics.timeouts).toBe(0);
     expect(metrics.lastAcquisitionAt).toBeNull();
     expect(metrics.currentConcurrent).toBe(0);

@@ -16,9 +16,10 @@ export class RateLimiterError extends Error {
 }
 
 /**
- * Thrown when a rate limiter is referenced but has not been configured.
+ * Error indicating a limiter was referenced but never configured.
  *
- * Call configure() or load_config() with the limiter's name before using it.
+ * This class is provided for consumers to use in their own validation logic.
+ * The library itself throws LimiterNotFoundError from the registry.
  */
 export class RateLimiterNotConfiguredError extends RateLimiterError {
   constructor(public readonly limiterName: string) {
@@ -102,10 +103,18 @@ export class LimiterNotFoundError extends RateLimiterError {
 }
 
 /**
- * Thrown when a rate limit is exceeded.
+ * Error representing a rate limit violation.
  *
- * Contains all information needed to construct a 429 Too Many Requests
- * response, including the retry window and the limiter that triggered the error.
+ * Provided as a convenience for consumers who prefer a throw-based API.
+ * The library's built-in wrappers (withRateLimit, withRateLimitAction) use
+ * return-based signaling instead. Use toResult() to convert to a RateLimitResult.
+ *
+ * @example
+ * ```typescript
+ * if (!result.allowed) {
+ *   throw new RateLimitExceededError(userId, result.limit, result.remaining, result.resetAt, result.retryAfter);
+ * }
+ * ```
  */
 export class RateLimitExceededError extends RateLimiterError {
   constructor(

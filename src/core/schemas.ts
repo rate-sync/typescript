@@ -60,7 +60,6 @@ export interface RateLimiterMetrics {
   totalWaitTimeMs: number;
   avgWaitTimeMs: number;
   maxWaitTimeMs: number;
-  casFailures: number;
   timeouts: number;
   lastAcquisitionAt: number | null;
   currentConcurrent: number;
@@ -79,7 +78,6 @@ export function createMetrics(): RateLimiterMetrics {
     totalWaitTimeMs: 0,
     avgWaitTimeMs: 0,
     maxWaitTimeMs: 0,
-    casFailures: 0,
     timeouts: 0,
     lastAcquisitionAt: null,
     currentConcurrent: 0,

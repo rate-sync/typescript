@@ -7,7 +7,7 @@ import {
   type RateLimitResult,
   type RateLimiterMetrics,
 } from './schemas.js';
-import { RateLimiterNotInitializedError } from './errors.js';
+import { RateLimiterAcquisitionError, RateLimiterNotInitializedError } from './errors.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -199,7 +199,10 @@ export class RateLimiter {
   async using(fn: () => Promise<void>, timeout?: number): Promise<void> {
     const acquired = await this.tryAcquire(timeout);
     if (!acquired) {
-      throw new Error(`RateLimiter "${this._id}": failed to acquire slot within timeout`);
+      throw new RateLimiterAcquisitionError(
+        `Failed to acquire rate limiter "${this._id}" within timeout`,
+        this._id,
+      );
     }
     try {
       await fn();

@@ -214,7 +214,7 @@ describe('RateLimiter', () => {
       await limiter.tryAcquire(); // consume token
       await expect(
         limiter.using(async () => {}, 1),
-      ).rejects.toThrow(/failed to acquire slot/);
+      ).rejects.toThrow(/Failed to acquire rate limiter/);
     });
   });
 
@@ -406,7 +406,6 @@ describe('RateLimiter', () => {
       expect(metrics.totalAcquisitions).toBe(0);
       expect(metrics.totalReleases).toBe(0);
       expect(metrics.timeouts).toBe(0);
-      expect(metrics.casFailures).toBe(0);
       expect(metrics.lastAcquisitionAt).toBeNull();
     });
   });
