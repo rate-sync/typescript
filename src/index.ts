@@ -1,0 +1,2 @@
+// rate-sync core
+export {};
