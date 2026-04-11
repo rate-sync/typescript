@@ -29,7 +29,7 @@ limit = 5                # 5 attempts
 window_seconds = 300     # per 5 minutes
 ```
 
-> **Deep dive:** [Authentication Protection](https://github.com/rate-sync/typescript/blob/main/docs/patterns/authentication-protection.md) &middot; [Abuse Prevention](https://github.com/rate-sync/typescript/blob/main/docs/patterns/abuse-prevention.md)
+> **Deep dive:** [Authentication Protection](https://github.com/rate-sync/typescript/blob/main/docs/patterns/authentication-protection.md)
 
 ### Different API quotas for free, pro, and enterprise customers
 
@@ -37,6 +37,7 @@ Your free tier gets 100 requests/hour. Pro gets 1,000. Enterprise gets 10,000. D
 
 ```typescript
 const limiter = getOrCloneLimiter(`api_${tier}`, apiKey);
+await limiter.initialize();
 ```
 
 > **Deep dive:** [API Tiering](https://github.com/rate-sync/typescript/blob/main/docs/patterns/api-tiering.md)
@@ -51,8 +52,6 @@ cloneLimiter('platform_api', `tenant:${tenantId}`);
 await acquire(`tenant:${tenantId}`);
 ```
 
-> **Deep dive:** [Multi-Tenant Fairness](https://github.com/rate-sync/typescript/blob/main/docs/patterns/multi-tenant-fairness.md)
-
 ### Webhook floods taking down your customers' endpoints
 
 Your platform sends webhooks to customer URLs. A bulk import triggers 10,000 events, and suddenly you're DDoS-ing your own customers. Per-endpoint rate limiting with automatic retries keeps delivery smooth without overwhelming anyone.
@@ -63,8 +62,6 @@ await limiter.using(async () => {
   await fetch(endpointUrl, { method: 'POST', body: JSON.stringify(payload) });
 });
 ```
-
-> **Deep dive:** [Webhook Delivery](https://github.com/rate-sync/typescript/blob/main/docs/patterns/webhook-delivery.md)
 
 ### File uploads and heavy operations eating all your resources
 
@@ -77,8 +74,6 @@ max_concurrent = 10     # max 10 uploads at once
 timeout = 300000        # 5 minutes in ms
 ```
 
-> **Deep dive:** [File Uploads & Heavy Resources](https://github.com/rate-sync/typescript/blob/main/docs/patterns/file-uploads.md)
-
 ### Background workers overwhelming third-party APIs
 
 You have 20 workers calling the Stripe API, which allows 100 req/s. Without coordination, your workers exceed the limit and get throttled. rate-sync coordinates across all workers through a shared Redis backend.
@@ -89,8 +84,6 @@ store = "redis"
 rate_per_second = 90    # stay under Stripe's 100/s limit
 max_concurrent = 10     # max 10 in-flight calls
 ```
-
-> **Deep dive:** [Background Jobs](https://github.com/rate-sync/typescript/blob/main/docs/patterns/background-jobs.md)
 
 ### Rate limits that actually work across multiple servers
 
@@ -105,8 +98,6 @@ url = "${REDIS_URL}"
 store = "redis"        # all instances share this
 rate_per_second = 100
 ```
-
-> **Deep dive:** [Production Deployment](https://github.com/rate-sync/typescript/blob/main/docs/patterns/production-deployment.md)
 
 ---
 
@@ -225,7 +216,7 @@ await acquire('api');
 ### Per-User / Per-Tenant Limits
 
 ```typescript
-import { getOrCloneLimiter, checkLimiter } from 'rate-sync';
+import { getOrCloneLimiter } from 'rate-sync';
 
 // Clone the base limiter config for each tenant
 const limiter = getOrCloneLimiter('api', `tenant:${tenantId}`);
@@ -400,21 +391,14 @@ window_seconds = 300
 | Configuration Reference | [docs/configuration.md](https://github.com/rate-sync/typescript/blob/main/docs/configuration.md) |
 | API Reference | [docs/api-reference.md](https://github.com/rate-sync/typescript/blob/main/docs/api-reference.md) |
 | Next.js Integration | [docs/nextjs-integration.md](https://github.com/rate-sync/typescript/blob/main/docs/nextjs-integration.md) |
-| Redis Setup | [docs/setup/redis-setup.md](https://github.com/rate-sync/typescript/blob/main/docs/setup/redis-setup.md) |
-| Observability | [docs/observability.md](https://github.com/rate-sync/typescript/blob/main/docs/observability.md) |
+| Memory Engine | [docs/engines/memory.md](https://github.com/rate-sync/typescript/blob/main/docs/engines/memory.md) |
+| Redis Engine | [docs/engines/redis.md](https://github.com/rate-sync/typescript/blob/main/docs/engines/redis.md) |
 
 ### Patterns
 
+- [Patterns Overview](https://github.com/rate-sync/typescript/blob/main/docs/patterns/README.md)
 - [Authentication Protection](https://github.com/rate-sync/typescript/blob/main/docs/patterns/authentication-protection.md)
-- [Abuse Prevention](https://github.com/rate-sync/typescript/blob/main/docs/patterns/abuse-prevention.md)
 - [API Tiering](https://github.com/rate-sync/typescript/blob/main/docs/patterns/api-tiering.md)
-- [Multi-Tenant Fairness](https://github.com/rate-sync/typescript/blob/main/docs/patterns/multi-tenant-fairness.md)
-- [Webhook Delivery](https://github.com/rate-sync/typescript/blob/main/docs/patterns/webhook-delivery.md)
-- [File Uploads & Heavy Resources](https://github.com/rate-sync/typescript/blob/main/docs/patterns/file-uploads.md)
-- [Background Jobs](https://github.com/rate-sync/typescript/blob/main/docs/patterns/background-jobs.md)
-- [Graceful Degradation](https://github.com/rate-sync/typescript/blob/main/docs/patterns/graceful-degradation.md)
-- [Production Deployment](https://github.com/rate-sync/typescript/blob/main/docs/patterns/production-deployment.md)
-- [Testing](https://github.com/rate-sync/typescript/blob/main/docs/patterns/testing.md)
 
 ## Contributing
 

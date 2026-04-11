@@ -72,6 +72,11 @@ export class RateLimiter {
 
   // ---- Lifecycle ------------------------------------------------------------
 
+  /**
+   * Connect to the backing store and mark this limiter as ready.
+   * Safe to call multiple times — subsequent calls are no-ops.
+   * Must complete before calling `acquire`, `tryAcquire`, `checkLimit`, or `getState`.
+   */
   async initialize(): Promise<void> {
     if (this._initialized) return;
     if (!this._initPromise) {
@@ -239,22 +244,37 @@ export class RateLimiter {
 
   // ---- Getters --------------------------------------------------------------
 
+  /**
+   * The limiter's unique ID within the registry (also used as the base store key).
+   */
   get groupId(): string {
     return this._id;
   }
 
+  /**
+   * Maximum requests per second allowed by this limiter, or `null` if not configured.
+   */
   get ratePerSecond(): number | null {
     return this._ratePerSecond;
   }
 
+  /**
+   * Maximum number of concurrent in-flight requests allowed, or `null` if not configured.
+   */
   get maxConcurrent(): number | null {
     return this._maxConcurrent;
   }
 
+  /**
+   * Whether `initialize()` has completed successfully.
+   */
   get isInitialized(): boolean {
     return this._initialized;
   }
 
+  /**
+   * Default timeout in milliseconds used by `tryAcquire` and `using`, or `null` if none was set.
+   */
   get defaultTimeout(): number | null {
     return this._timeout;
   }
@@ -271,11 +291,23 @@ export class RateLimiter {
 
   // ---- Introspection --------------------------------------------------------
 
+  /**
+   * Return a snapshot of runtime metrics for this limiter.
+   * Includes total acquisitions, wait times, concurrent counts, and timeout counts.
+   *
+   * @returns A shallow copy of the current `RateLimiterMetrics`
+   */
   getMetrics(): RateLimiterMetrics {
     // Return a copy
     return { ...this._metrics };
   }
 
+  /**
+   * Return the immutable configuration this limiter was created with.
+   * Useful for inspecting a cloned limiter or for serialisation / debugging.
+   *
+   * @returns A `LimiterReadOnlyConfig` snapshot
+   */
   getConfig(): LimiterReadOnlyConfig {
     return {
       id: this._id,

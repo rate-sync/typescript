@@ -10,6 +10,7 @@
     "url": "https://github.com/rate-sync/typescript.git"
   },
   "homepage": "https://github.com/rate-sync/typescript#readme",
+  "bugs": { "url": "https://github.com/rate-sync/typescript/issues" },
   "keywords": [
     "rate-limiting",
     "distributed-systems",
