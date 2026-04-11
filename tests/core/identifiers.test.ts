@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hashIdentifier, combineIdentifiers } from '../../src/core/identifiers';
+import { hashIdentifier, combineIdentifiers } from '../../src/core/identifiers.js';
 
 describe('hashIdentifier', () => {
   it('returns 16-char hex string', () => {

@@ -110,13 +110,16 @@ describe('RedisStore — Token Bucket', () => {
 
   it('after reset, a previously blocked key should succeed again', async () => {
     if (!available) return;
+    // Use a slower rate so the interval (2s) exceeds any Redis round-trip latency,
+    // preventing the "blocked" assertion from racing with token refill.
+    const slowConfig = { algorithm: 'token-bucket' as const, ratePerSecond: 0.5 };
     await store.reset('tb:key4');
-    await store.acquire('tb:key4', config);
-    const blocked = await store.acquire('tb:key4', config);
+    await store.acquire('tb:key4', slowConfig);
+    const blocked = await store.acquire('tb:key4', slowConfig);
     expect(blocked.success).toBe(false);
 
     await store.reset('tb:key4');
-    const afterReset = await store.acquire('tb:key4', config);
+    const afterReset = await store.acquire('tb:key4', slowConfig);
     expect(afterReset.success).toBe(true);
   });
 });

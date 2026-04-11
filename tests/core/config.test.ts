@@ -271,14 +271,13 @@ engine = "memory"
     expect(listLimiters()).toHaveLength(0);
   });
 
-  it('handles TOML with no stores section gracefully', async () => {
+  it('throws ConfigValidationError when TOML has no stores or limiters', async () => {
     const toml = `
 # empty config
 `;
     const path = writeTempToml(toml);
-    await expect(loadConfig(path)).resolves.toBeUndefined();
-    expect(listStores()).toHaveLength(0);
-    expect(listLimiters()).toHaveLength(0);
+    await expect(loadConfig(path)).rejects.toThrow(ConfigValidationError);
+    await expect(loadConfig(path)).rejects.toThrow('no stores or limiters');
   });
 });
 

@@ -142,6 +142,13 @@ export async function loadConfig(configPath: string): Promise<void> {
   const rawStores = (expanded.stores ?? {}) as Record<string, unknown>;
   const rawLimiters = (expanded.limiters ?? {}) as Record<string, unknown>;
 
+  if (Object.keys(rawStores).length === 0 && Object.keys(rawLimiters).length === 0) {
+    throw new ConfigValidationError(
+      'Configuration file contains no stores or limiters',
+      'config_file',
+    );
+  }
+
   for (const [id, config] of Object.entries(rawStores)) {
     const converted = snakeToCamelKeys(config) as EngineConfig;
     await configureStore(id, converted);

@@ -3,7 +3,7 @@ import {
   createRateLimitResult,
   createMultiLimiterResult,
   createMetrics,
-} from '../../src/core/schemas';
+} from '../../src/core/schemas.js';
 
 describe('createRateLimitResult', () => {
   beforeEach(() => {

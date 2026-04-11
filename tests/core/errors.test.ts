@@ -9,7 +9,7 @@ import {
   StoreNotFoundError,
   LimiterNotFoundError,
   RateLimitExceededError,
-} from '../../src/core/errors';
+} from '../../src/core/errors.js';
 
 describe('Error Hierarchy', () => {
   describe('RateLimiterError (base)', () => {

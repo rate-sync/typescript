@@ -13,7 +13,7 @@ import {
   checkMultiLimiters,
   closeAll,
 } from '../../src/core/registry.js';
-import { StoreNotFoundError, LimiterNotFoundError } from '../../src/core/errors.js';
+import { StoreNotFoundError, LimiterNotFoundError, RateLimiterAlreadyConfiguredError } from '../../src/core/errors.js';
 
 // Reset the registry between each test by closing all state
 beforeEach(async () => {
@@ -85,6 +85,22 @@ describe('configureLimiter', () => {
     expect(() =>
       configureLimiter('api', { store: 'ghost' }),
     ).toThrow(expect.objectContaining({ storeId: 'ghost' }));
+  });
+
+  it('throws RateLimiterAlreadyConfiguredError when limiter id is reused', async () => {
+    await configureStore('mem', { engine: 'memory' });
+    configureLimiter('api', { store: 'mem', algorithm: 'token-bucket', ratePerSecond: 10 });
+    expect(() =>
+      configureLimiter('api', { store: 'mem', algorithm: 'token-bucket', ratePerSecond: 5 }),
+    ).toThrow(RateLimiterAlreadyConfiguredError);
+  });
+
+  it('thrown RateLimiterAlreadyConfiguredError has correct limiterName', async () => {
+    await configureStore('mem', { engine: 'memory' });
+    configureLimiter('dup', { store: 'mem', algorithm: 'token-bucket', ratePerSecond: 10 });
+    expect(() =>
+      configureLimiter('dup', { store: 'mem', algorithm: 'token-bucket', ratePerSecond: 5 }),
+    ).toThrow(expect.objectContaining({ limiterName: 'dup' }));
   });
 });
 

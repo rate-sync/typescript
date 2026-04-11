@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { MemoryStore } from '../../src/engines/memory/index';
-import type { RateLimitStore } from '../../src/engines/base';
+import { MemoryStore } from '../../src/engines/memory/index.js';
+import type { RateLimitStore } from '../../src/engines/base.js';
 
 const storeFactories: [string, () => RateLimitStore][] = [
   ['memory', () => new MemoryStore()],

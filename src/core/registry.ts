@@ -1,7 +1,7 @@
 import { MemoryStore } from '../engines/memory/index.js';
 import type { EngineConfig, LimiterConfig, MultiLimiterResult, RateLimitResult } from './schemas.js';
 import { createMultiLimiterResult } from './schemas.js';
-import { LimiterNotFoundError, StoreNotFoundError } from './errors.js';
+import { LimiterNotFoundError, RateLimiterAlreadyConfiguredError, StoreNotFoundError } from './errors.js';
 import type { RateLimitStore } from '../engines/base.js';
 import { RateLimiter } from './rate-limiter.js';
 
@@ -55,6 +55,10 @@ class Registry {
   // ---- Limiters -------------------------------------------------------------
 
   configureLimiter(limiterId: string, config: LimiterConfig): void {
+    if (this.limiters.has(limiterId)) {
+      throw new RateLimiterAlreadyConfiguredError(limiterId);
+    }
+
     const store = this.stores.get(config.store);
     if (!store) {
       throw new StoreNotFoundError(config.store);
