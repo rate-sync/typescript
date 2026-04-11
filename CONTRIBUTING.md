@@ -107,7 +107,7 @@ import { describe, it, expect } from 'vitest';
 describe('Feature', () => {
   it('basic case', async () => {
     // Arrange
-    const limiter = new RateLimiter({ id: 'test', store, storeId: 'mem', ratePerSecond: 10 });
+    const limiter = new RateLimiter({ id: 'test', store, storeId: 'test-store', ratePerSecond: 10 });
     await limiter.initialize();
 
     // Act
