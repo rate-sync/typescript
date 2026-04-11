@@ -1,5 +1,5 @@
 import { configureStore, configureLimiter, initializeAllLimiters } from './registry.js';
-import type { RateSyncConfig, SupportedEngineConfig } from './schemas.js';
+import type { RateSyncConfig } from './schemas.js';
 
 // ---------------------------------------------------------------------------
 // defineConfig
@@ -34,7 +34,7 @@ export function defineConfig(config: RateSyncConfig): RateSyncConfig {
  */
 export async function setupRateSyncFromConfig(config: RateSyncConfig): Promise<void> {
   for (const [id, storeConfig] of Object.entries(config.stores)) {
-    await configureStore(id, storeConfig as SupportedEngineConfig);
+    await configureStore(id, storeConfig);
   }
   for (const [id, limiterConfig] of Object.entries(config.limiters)) {
     configureLimiter(id, limiterConfig);

@@ -176,8 +176,8 @@ export interface LimiterConfig {
 /**
  * Top-level declarative configuration for the rate-sync library.
  *
- * Defines all stores and limiters in a single object that can be loaded
- * from a YAML/JSON config file or constructed programmatically.
+ * Defines all stores and limiters in a single object, constructed
+ * programmatically via `defineConfig()` and applied with `setupRateSyncFromConfig()`.
  *
  * @example
  * ```typescript
@@ -188,7 +188,7 @@ export interface LimiterConfig {
  * ```
  */
 export interface RateSyncConfig {
-  readonly stores: Record<string, EngineConfig>;
+  readonly stores: Record<string, SupportedEngineConfig>;
   readonly limiters: Record<string, LimiterConfig>;
 }
 
