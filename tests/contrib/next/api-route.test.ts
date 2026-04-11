@@ -20,7 +20,7 @@ function makeRequest(headers: Record<string, string | null> = {}, url = 'https:/
 
 async function setup(limiterId: string, limit: number, storeName?: string) {
   const store = storeName ?? `store-${limiterId}`;
-  configureStore(store, { engine: 'memory' });
+  await configureStore(store, { engine: 'memory' });
   configureLimiter(limiterId, {
     store,
     algorithm: 'sliding-window',
@@ -91,7 +91,7 @@ describe('withRateLimit', () => {
   });
 
   it('checks all limiters when array limiterId is provided', async () => {
-    configureStore('shared-store', { engine: 'memory' });
+    await configureStore('shared-store', { engine: 'memory' });
     configureLimiter('lim-a', { store: 'shared-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 60 });
     configureLimiter('lim-b', { store: 'shared-store', algorithm: 'sliding-window', limit: 1, windowSeconds: 60 });
     await initializeLimiter('lim-a');
@@ -190,5 +190,22 @@ describe('withRateLimit', () => {
     const req = makeRequest({}, 'https://example.com/api/user123');
     const response = await wrapped(req);
     expect(response.status).toBe(200);
+  });
+
+  it('handler errors propagate normally (not swallowed by failOpen)', async () => {
+    await setup('api-lim-6', 10);
+
+    const handlerError = new Error('handler boom');
+    const handler = vi.fn().mockRejectedValue(handlerError);
+
+    const wrapped = withRateLimit(handler, {
+      limiterId: 'api-lim-6',
+      keyExtractor: () => 'user-1',
+      failOpen: true,  // failOpen should NOT catch handler errors
+    });
+
+    const req = makeRequest();
+    await expect(wrapped(req)).rejects.toThrow('handler boom');
+    expect(handler).toHaveBeenCalledOnce();
   });
 });

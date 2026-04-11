@@ -41,6 +41,22 @@ describe('RedisStore — lifecycle', () => {
       uninitStore.acquire('lifecycle:key', { algorithm: 'token-bucket', ratePerSecond: 10 }),
     ).rejects.toThrow('not initialized');
   });
+
+  it('calling initialize() twice does not leak a second client', async () => {
+    if (!available) return;
+    // Create a fresh store and initialize twice — should not throw and should
+    // still work correctly (idempotency guard: if (this.client) return)
+    const idempotentStore = new RedisStore({ url: REDIS_URL, keyPrefix: KEY_PREFIX });
+    await idempotentStore.initialize();
+    await expect(idempotentStore.initialize()).resolves.toBeUndefined();
+    // Verify the store is still functional
+    const result = await idempotentStore.acquire('lifecycle:idempotent', {
+      algorithm: 'token-bucket',
+      ratePerSecond: 100,
+    });
+    expect(result.success).toBe(true);
+    await idempotentStore.close();
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -25,4 +25,12 @@ describe('combineIdentifiers', () => {
   it('filters empty strings', () => {
     expect(combineIdentifiers('api', '', '123')).toBe('api:123');
   });
+
+  it('preserves "0" (falsy string must NOT be dropped)', () => {
+    expect(combineIdentifiers('api', '0', 'user')).toBe('api:0:user');
+  });
+
+  it('preserves single "0" argument', () => {
+    expect(combineIdentifiers('0')).toBe('0');
+  });
 });

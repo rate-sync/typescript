@@ -15,15 +15,25 @@ class Registry {
 
   // ---- Stores ---------------------------------------------------------------
 
-  configureStore(storeId: string, config: EngineConfig): void {
+  async configureStore(storeId: string, config: EngineConfig): Promise<void> {
     let store: RateLimitStore;
 
     if (config.engine === 'memory') {
       store = new MemoryStore();
+    } else if (config.engine === 'redis') {
+      // Dynamic import: redis is an optional peer dependency
+      const { RedisStore } = await import('../engines/redis/index.js');
+      store = new RedisStore({
+        url: config.url,
+        db: config.db,
+        password: config.password,
+        keyPrefix: config.keyPrefix,
+        socketTimeout: config.socketTimeout,
+      });
     } else {
-      // redis / postgres: dynamic import deferred — throw for now
+      // postgres: not yet supported via registry
       throw new Error(
-        `Engine "${config.engine}" is not yet supported in the registry. Use MemoryStore directly.`,
+        `Engine "${(config as EngineConfig).engine}" is not yet supported in the registry.`,
       );
     }
 
@@ -149,67 +159,75 @@ class Registry {
 // Singleton via globalThis (hot-reload safe)
 // ---------------------------------------------------------------------------
 
-const g = globalThis as unknown as { __rateSyncRegistry?: Registry };
-const registry = (g.__rateSyncRegistry ??= new Registry());
+/**
+ * Returns the global Registry instance, creating a new one if it doesn't exist.
+ * Reading from globalThis on every call ensures that after closeAll() deletes
+ * the singleton, the next call gets a fresh Registry rather than the stale
+ * module-level reference.
+ */
+function getRegistry(): Registry {
+  const g = globalThis as unknown as { __rateSyncRegistry?: Registry };
+  return (g.__rateSyncRegistry ??= new Registry());
+}
 
 // ---------------------------------------------------------------------------
 // Module-level functions
 // ---------------------------------------------------------------------------
 
-export function configureStore(storeId: string, config: EngineConfig): void {
-  registry.configureStore(storeId, config);
+export async function configureStore(storeId: string, config: EngineConfig): Promise<void> {
+  return getRegistry().configureStore(storeId, config);
 }
 
 export function configureLimiter(limiterId: string, config: LimiterConfig): void {
-  registry.configureLimiter(limiterId, config);
+  getRegistry().configureLimiter(limiterId, config);
 }
 
 export function getLimiter(limiterId: string): RateLimiter {
-  return registry.getLimiter(limiterId);
+  return getRegistry().getLimiter(limiterId);
 }
 
 export function cloneLimiter(baseId: string, newId: string): void {
-  registry.cloneLimiter(baseId, newId);
+  getRegistry().cloneLimiter(baseId, newId);
 }
 
 export function getOrCloneLimiter(baseId: string, newId: string): RateLimiter {
-  return registry.getOrCloneLimiter(baseId, newId);
+  return getRegistry().getOrCloneLimiter(baseId, newId);
 }
 
 export function listStores(): string[] {
-  return registry.listStores();
+  return getRegistry().listStores();
 }
 
 export function listLimiters(): string[] {
-  return registry.listLimiters();
+  return getRegistry().listLimiters();
 }
 
 export async function acquire(limiterId: string): Promise<void> {
-  return registry.acquire(limiterId);
+  return getRegistry().acquire(limiterId);
 }
 
 export async function initializeLimiter(limiterId: string): Promise<void> {
-  return registry.initializeLimiter(limiterId);
+  return getRegistry().initializeLimiter(limiterId);
 }
 
 export async function initializeAllLimiters(): Promise<void> {
-  return registry.initializeAllLimiters();
+  return getRegistry().initializeAllLimiters();
 }
 
 export async function checkLimiter(
   limiterId: string,
   identifier?: string,
 ): Promise<RateLimitResult> {
-  return registry.checkLimiter(limiterId, identifier);
+  return getRegistry().checkLimiter(limiterId, identifier);
 }
 
 export async function checkMultiLimiters(
   limiterIds: string[],
   identifiers?: string[],
 ): Promise<MultiLimiterResult> {
-  return registry.checkMultiLimiters(limiterIds, identifiers);
+  return getRegistry().checkMultiLimiters(limiterIds, identifiers);
 }
 
 export async function closeAll(): Promise<void> {
-  return registry.closeAll();
+  return getRegistry().closeAll();
 }

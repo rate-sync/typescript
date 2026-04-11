@@ -108,7 +108,7 @@ export function snakeToCamelKeys(obj: unknown): unknown {
  * 3. Convert snake_case keys to camelCase
  * 4. Configure stores and limiters in the registry
  */
-export function loadConfig(configPath: string): void {
+export async function loadConfig(configPath: string): Promise<void> {
   let raw: string;
   try {
     raw = readFileSync(configPath, 'utf-8');
@@ -133,12 +133,18 @@ export function loadConfig(configPath: string): void {
   // The section IDs (store names, limiter names) are user-defined identifiers
   // and must be preserved as-is. Only the config properties within each entry
   // should be converted from snake_case to camelCase.
+  //
+  // NOTE: snakeToCamelKeys only converts object KEYS, not string VALUES.
+  // Algorithm names like "token-bucket" / "sliding-window" (hyphens) must be
+  // written verbatim in TOML — they are NOT affected by this conversion.
+  // Example: algorithm = "token-bucket"  (correct)
+  //          algorithm = "token_bucket"  (wrong — will not be recognised)
   const rawStores = (expanded.stores ?? {}) as Record<string, unknown>;
   const rawLimiters = (expanded.limiters ?? {}) as Record<string, unknown>;
 
   for (const [id, config] of Object.entries(rawStores)) {
     const converted = snakeToCamelKeys(config) as EngineConfig;
-    configureStore(id, converted);
+    await configureStore(id, converted);
   }
 
   for (const [id, config] of Object.entries(rawLimiters)) {
@@ -166,6 +172,6 @@ export function defineConfig(config: RateSyncConfig): RateSyncConfig {
  * Load config from a TOML file and initialize all configured limiters.
  */
 export async function setupRateSync(configPath: string): Promise<void> {
-  loadConfig(configPath);
+  await loadConfig(configPath);
   await initializeAllLimiters();
 }

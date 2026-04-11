@@ -10,7 +10,7 @@ import {
 
 async function setup(limiterId: string, limit: number, storeName?: string) {
   const store = storeName ?? `store-${limiterId}`;
-  configureStore(store, { engine: 'memory' });
+  await configureStore(store, { engine: 'memory' });
   configureLimiter(limiterId, {
     store,
     algorithm: 'sliding-window',
@@ -147,7 +147,7 @@ describe('withRateLimitAction', () => {
   });
 
   it('checks all limiters in array and blocks if any is exhausted', async () => {
-    configureStore('shared-action-store', { engine: 'memory' });
+    await configureStore('shared-action-store', { engine: 'memory' });
     configureLimiter('action-lim-a', { store: 'shared-action-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 60 });
     configureLimiter('action-lim-b', { store: 'shared-action-store', algorithm: 'sliding-window', limit: 1, windowSeconds: 60 });
     await initializeLimiter('action-lim-a');
@@ -183,5 +183,21 @@ describe('withRateLimitAction', () => {
 
     const result = await wrapped('user-x');
     expect(result).toEqual({ done: true });
+  });
+
+  it('action errors propagate normally (not swallowed by failOpen)', async () => {
+    await setup('action-lim-6', 10);
+
+    const actionError = new Error('action boom');
+    const action = vi.fn().mockRejectedValue(actionError);
+
+    const wrapped = withRateLimitAction(action, {
+      limiterId: 'action-lim-6',
+      keyExtractor: () => 'user-1',
+      failOpen: true,  // failOpen should NOT catch action errors
+    });
+
+    await expect(wrapped()).rejects.toThrow('action boom');
+    expect(action).toHaveBeenCalledOnce();
   });
 });

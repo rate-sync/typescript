@@ -347,6 +347,43 @@ describe('RateLimiter', () => {
       const limiter = makeLimiter();
       await expect(limiter.getState()).rejects.toBeInstanceOf(RateLimiterNotInitializedError);
     });
+
+    it('uses identifier-namespaced key when identifier is provided', async () => {
+      const limiter = makeLimiter({
+        id: 'api',
+        algorithm: 'sliding-window',
+        limit: 2,
+        windowSeconds: 60,
+        ratePerSecond: undefined,
+      });
+      await limiter.initialize();
+
+      // Consume one slot for user-1
+      await limiter.checkLimit('user-1');
+
+      // getState for user-1 should reflect 1 usage
+      const stateUser1 = await limiter.getState('user-1');
+      expect(stateUser1.currentUsage).toBe(1);
+
+      // getState for user-2 (no usage) should reflect 0 usage
+      const stateUser2 = await limiter.getState('user-2');
+      expect(stateUser2.currentUsage).toBe(0);
+    });
+
+    it('getState without identifier returns state for the limiter id key', async () => {
+      const limiter = makeLimiter({
+        id: 'bare',
+        algorithm: 'sliding-window',
+        limit: 3,
+        windowSeconds: 60,
+        ratePerSecond: undefined,
+      });
+      await limiter.initialize();
+      await limiter.checkLimit(); // uses key = 'bare'
+
+      const state = await limiter.getState(); // should also use key = 'bare'
+      expect(state.currentUsage).toBe(1);
+    });
   });
 
   // --------------------------------------------------------------------------

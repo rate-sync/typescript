@@ -34,6 +34,8 @@ export class RedisStore implements RateLimitStore {
   // ---------------------------------------------------------------------------
 
   async initialize(): Promise<void> {
+    if (this.client) return;
+
     this.client = createClient({
       url: this.url,
       password: this.password,

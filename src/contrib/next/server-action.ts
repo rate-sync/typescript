@@ -17,6 +17,10 @@ export function withRateLimitAction<TArgs extends any[], TReturn>(
   const { failOpen = true } = options;
 
   return async (...args) => {
+    let blockedResult: { retryAfter: number } | null = null;
+
+    // Only the rate-limiting logic is wrapped in try/catch.
+    // Action errors must propagate normally (not be swallowed by failOpen).
     try {
       const key = await options.keyExtractor(...args);
       const ids = Array.isArray(options.limiterId) ? options.limiterId : [options.limiterId];
@@ -26,13 +30,20 @@ export function withRateLimitAction<TArgs extends any[], TReturn>(
         if (!limiter.isInitialized) await initializeLimiter(id);
         const result = await checkLimiter(id, key);
         if (!result.allowed) {
-          return { error: { code: 'RATE_LIMIT_EXCEEDED', message: `Too many requests. Try again in ${result.retryAfter}s.`, retryAfter: result.retryAfter } };
+          blockedResult = result;
+          break;
         }
       }
-      return action(...args);
     } catch (error) {
-      if (failOpen) return action(...args);
-      throw error;
+      if (!failOpen) throw error;
+      return action(...args);  // failOpen: skip rate limiting, call action once
     }
+
+    if (blockedResult) {
+      return { error: { code: 'RATE_LIMIT_EXCEEDED', message: `Too many requests. Try again in ${blockedResult.retryAfter}s.`, retryAfter: blockedResult.retryAfter } };
+    }
+
+    // Action call is OUTSIDE try/catch — errors propagate normally
+    return action(...args);
   };
 }

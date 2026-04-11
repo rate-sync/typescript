@@ -163,7 +163,7 @@ describe('loadConfig', () => {
     return filePath;
   }
 
-  it('configures a memory store from TOML', () => {
+  it('configures a memory store from TOML', async () => {
     const toml = `
 [stores.main]
 engine = "memory"
@@ -174,13 +174,13 @@ algorithm = "token-bucket"
 rate_per_second = 10
 `;
     const path = writeTempToml(toml);
-    loadConfig(path);
+    await loadConfig(path);
 
     expect(listStores()).toContain('main');
     expect(listLimiters()).toContain('api');
   });
 
-  it('converts snake_case keys to camelCase for limiters', () => {
+  it('converts snake_case keys to camelCase for limiters', async () => {
     const toml = `
 [stores.mem]
 engine = "memory"
@@ -192,35 +192,35 @@ limit = 100
 window_seconds = 60
 `;
     const path = writeTempToml(toml);
-    loadConfig(path);
+    await loadConfig(path);
 
     expect(listLimiters()).toContain('sliding');
   });
 
-  it('expands env vars in TOML values', () => {
+  it('expands env vars in TOML values', async () => {
     vi.stubEnv('TEST_ENGINE', 'memory');
     const toml = `
 [stores.env_store]
 engine = "\${TEST_ENGINE}"
 `;
     const path = writeTempToml(toml);
-    loadConfig(path);
+    await loadConfig(path);
 
     expect(listStores()).toContain('env_store');
   });
 
-  it('expands env vars with defaults', () => {
+  it('expands env vars with defaults', async () => {
     const toml = `
 [stores.default_store]
 engine = "\${NONEXISTENT_ENGINE:-memory}"
 `;
     const path = writeTempToml(toml);
-    loadConfig(path);
+    await loadConfig(path);
 
     expect(listStores()).toContain('default_store');
   });
 
-  it('configures multiple stores and limiters', () => {
+  it('configures multiple stores and limiters', async () => {
     const toml = `
 [stores.store_a]
 engine = "memory"
@@ -240,7 +240,7 @@ limit = 20
 window_seconds = 30
 `;
     const path = writeTempToml(toml);
-    loadConfig(path);
+    await loadConfig(path);
 
     const stores = listStores();
     const limiters = listLimiters();
@@ -251,32 +251,32 @@ window_seconds = 30
     expect(limiters).toContain('lim_b');
   });
 
-  it('throws ConfigValidationError when file not found', () => {
-    expect(() => loadConfig('/nonexistent/path/config.toml')).toThrow(ConfigValidationError);
+  it('throws ConfigValidationError when file not found', async () => {
+    await expect(loadConfig('/nonexistent/path/config.toml')).rejects.toThrow(ConfigValidationError);
   });
 
-  it('throws ConfigValidationError on invalid TOML', () => {
+  it('throws ConfigValidationError on invalid TOML', async () => {
     const path = writeTempToml('this is not valid toml ===');
-    expect(() => loadConfig(path)).toThrow(ConfigValidationError);
+    await expect(loadConfig(path)).rejects.toThrow(ConfigValidationError);
   });
 
-  it('handles TOML with no limiters section gracefully', () => {
+  it('handles TOML with no limiters section gracefully', async () => {
     const toml = `
 [stores.only_store]
 engine = "memory"
 `;
     const path = writeTempToml(toml);
-    expect(() => loadConfig(path)).not.toThrow();
+    await expect(loadConfig(path)).resolves.toBeUndefined();
     expect(listStores()).toContain('only_store');
     expect(listLimiters()).toHaveLength(0);
   });
 
-  it('handles TOML with no stores section gracefully', () => {
+  it('handles TOML with no stores section gracefully', async () => {
     const toml = `
 # empty config
 `;
     const path = writeTempToml(toml);
-    expect(() => loadConfig(path)).not.toThrow();
+    await expect(loadConfig(path)).resolves.toBeUndefined();
     expect(listStores()).toHaveLength(0);
     expect(listLimiters()).toHaveLength(0);
   });

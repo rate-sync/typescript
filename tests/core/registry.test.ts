@@ -28,7 +28,7 @@ afterEach(async () => {
 // Helper: set up a store + limiter in one call
 // ---------------------------------------------------------------------------
 async function setup(storeName = 'mem', limiterName = 'lim') {
-  configureStore(storeName, { engine: 'memory' });
+  await configureStore(storeName, { engine: 'memory' });
   configureLimiter(limiterName, {
     store: storeName,
     algorithm: 'sliding-window',
@@ -44,14 +44,14 @@ async function setup(storeName = 'mem', limiterName = 'lim') {
 // ---------------------------------------------------------------------------
 
 describe('configureStore', () => {
-  it('adds the store to listStores()', () => {
-    configureStore('main', { engine: 'memory' });
+  it('adds the store to listStores()', async () => {
+    await configureStore('main', { engine: 'memory' });
     expect(listStores()).toContain('main');
   });
 
-  it('supports multiple stores', () => {
-    configureStore('store-a', { engine: 'memory' });
-    configureStore('store-b', { engine: 'memory' });
+  it('supports multiple stores', async () => {
+    await configureStore('store-a', { engine: 'memory' });
+    await configureStore('store-b', { engine: 'memory' });
     const stores = listStores();
     expect(stores).toContain('store-a');
     expect(stores).toContain('store-b');
@@ -63,8 +63,8 @@ describe('configureStore', () => {
 // ---------------------------------------------------------------------------
 
 describe('configureLimiter', () => {
-  it('adds limiter to listLimiters()', () => {
-    configureStore('mem', { engine: 'memory' });
+  it('adds limiter to listLimiters()', async () => {
+    await configureStore('mem', { engine: 'memory' });
     configureLimiter('api', { store: 'mem', algorithm: 'token-bucket', ratePerSecond: 10 });
     expect(listLimiters()).toContain('api');
   });
@@ -111,7 +111,7 @@ describe('getLimiter', () => {
 
 describe('initializeLimiter', () => {
   it('marks the limiter as initialized', async () => {
-    configureStore('mem', { engine: 'memory' });
+    await configureStore('mem', { engine: 'memory' });
     configureLimiter('lim', { store: 'mem', algorithm: 'token-bucket', ratePerSecond: 5 });
 
     const limiter = getLimiter('lim');
@@ -132,7 +132,7 @@ describe('initializeLimiter', () => {
 
 describe('initializeAllLimiters', () => {
   it('initializes all configured limiters', async () => {
-    configureStore('mem', { engine: 'memory' });
+    await configureStore('mem', { engine: 'memory' });
     configureLimiter('limA', { store: 'mem', algorithm: 'token-bucket', ratePerSecond: 5 });
     configureLimiter('limB', { store: 'mem', algorithm: 'sliding-window', limit: 10, windowSeconds: 60 });
 
@@ -171,7 +171,7 @@ describe('checkLimiter', () => {
   });
 
   it('uses identifier as a namespace for the key', async () => {
-    configureStore('mem', { engine: 'memory' });
+    await configureStore('mem', { engine: 'memory' });
     configureLimiter('user-lim', {
       store: 'mem',
       algorithm: 'sliding-window',
@@ -204,7 +204,7 @@ describe('checkLimiter', () => {
 
 describe('checkMultiLimiters', () => {
   it('returns a MultiLimiterResult with combined results', async () => {
-    configureStore('mem', { engine: 'memory' });
+    await configureStore('mem', { engine: 'memory' });
     configureLimiter('limX', { store: 'mem', algorithm: 'sliding-window', limit: 5, windowSeconds: 60 });
     configureLimiter('limY', { store: 'mem', algorithm: 'sliding-window', limit: 5, windowSeconds: 60 });
     await initializeAllLimiters();
@@ -219,7 +219,7 @@ describe('checkMultiLimiters', () => {
   });
 
   it('allowed=false when any limiter is denied', async () => {
-    configureStore('mem', { engine: 'memory' });
+    await configureStore('mem', { engine: 'memory' });
     configureLimiter('limA', { store: 'mem', algorithm: 'sliding-window', limit: 1, windowSeconds: 60 });
     configureLimiter('limB', { store: 'mem', algorithm: 'sliding-window', limit: 10, windowSeconds: 60 });
     await initializeAllLimiters();
@@ -247,7 +247,7 @@ describe('cloneLimiter', () => {
   });
 
   it('clone has the same config as base (except id)', async () => {
-    configureStore('mem', { engine: 'memory' });
+    await configureStore('mem', { engine: 'memory' });
     configureLimiter('base', {
       store: 'mem',
       algorithm: 'sliding-window',
@@ -331,5 +331,16 @@ describe('closeAll', () => {
     await setup('mem', 'lim');
     await closeAll();
     await expect(closeAll()).resolves.toBeUndefined();
+  });
+
+  it('after closeAll(), new configureStore/configureLimiter still works', async () => {
+    await setup('mem', 'lim');
+    await closeAll();
+
+    // getRegistry() should create a fresh Registry instance
+    await configureStore('mem2', { engine: 'memory' });
+    configureLimiter('lim2', { store: 'mem2', algorithm: 'sliding-window', limit: 5, windowSeconds: 60 });
+    expect(listStores()).toContain('mem2');
+    expect(listLimiters()).toContain('lim2');
   });
 });

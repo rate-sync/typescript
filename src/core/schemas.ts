@@ -62,7 +62,7 @@ export function createMetrics(): RateLimiterMetrics {
 
 export interface LimiterReadOnlyConfig {
   readonly id: string;
-  readonly algorithm: string;
+  readonly algorithm: 'token-bucket' | 'sliding-window';
   readonly storeId: string;
   readonly ratePerSecond: number | null;
   readonly maxConcurrent: number | null;

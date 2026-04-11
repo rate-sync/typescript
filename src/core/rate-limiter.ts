@@ -278,9 +278,18 @@ export class RateLimiter {
     };
   }
 
-  async getState(): Promise<LimiterState> {
+  async getState(identifier?: string): Promise<LimiterState> {
     this._ensureInitialized();
+    const key = identifier ? `${this._id}:${identifier}` : this._id;
     const config = this._buildAcquireConfig();
-    return this._store.getState(this._id, config);
+    return this._store.getState(key, config);
+  }
+
+  /**
+   * Resets all stored state for this limiter (used by testing utilities).
+   */
+  async resetState(): Promise<void> {
+    this._ensureInitialized();
+    await this._store.reset(this._id);
   }
 }

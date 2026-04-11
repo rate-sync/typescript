@@ -5,5 +5,5 @@ export function hashIdentifier(identifier: string): string {
 }
 
 export function combineIdentifiers(...parts: string[]): string {
-  return parts.filter(Boolean).join(':');
+  return parts.filter((p) => p !== '').join(':');
 }

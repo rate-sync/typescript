@@ -1,5 +1,5 @@
 import { MemoryStore } from '../engines/memory/index.js';
-import { configureStore, configureLimiter, initializeLimiter, checkLimiter, closeAll } from '../core/registry.js';
+import { configureStore, configureLimiter, initializeLimiter, checkLimiter, listLimiters, getLimiter } from '../core/registry.js';
 import type { LimiterConfig } from '../core/schemas.js';
 import type { RateLimitStore } from '../engines/base.js';
 
@@ -7,15 +7,26 @@ export function createTestStore(): RateLimitStore {
   return new MemoryStore();
 }
 
-export function setupTestRateSync(limiters: Record<string, Partial<LimiterConfig>>): void {
-  configureStore('__test_memory', { engine: 'memory' });
+export async function setupTestRateSync(limiters: Record<string, Partial<LimiterConfig>>): Promise<void> {
+  await configureStore('__test_memory', { engine: 'memory' });
   for (const [id, config] of Object.entries(limiters)) {
     configureLimiter(id, { store: '__test_memory', ...config } as LimiterConfig);
   }
 }
 
+/**
+ * Resets all limiter state without destroying the registry.
+ * This is safer than closeAll() for test isolation — it preserves configured
+ * stores and limiters while clearing accumulated rate-limit counters.
+ */
 export async function resetAllLimiters(): Promise<void> {
-  await closeAll();
+  const ids = listLimiters();
+  for (const id of ids) {
+    const limiter = getLimiter(id);
+    if (limiter.isInitialized) {
+      await limiter.resetState();
+    }
+  }
 }
 
 export async function expectAllowed(limiterId: string, identifier?: string): Promise<void> {
