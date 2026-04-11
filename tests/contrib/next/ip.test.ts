@@ -44,4 +44,12 @@ describe('getClientIp', () => {
     });
     expect(getClientIp(req)).toBe('8.8.8.8');
   });
+
+  it('falls back to x-real-ip when x-forwarded-for is an empty string', () => {
+    const req = makeReq({
+      'x-forwarded-for': '',
+      'x-real-ip': '10.0.0.5',
+    });
+    expect(getClientIp(req)).toBe('10.0.0.5');
+  });
 });

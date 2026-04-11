@@ -4,13 +4,13 @@ export interface RateLimitActionError {
   error: { code: 'RATE_LIMIT_EXCEEDED'; message: string; retryAfter: number; };
 }
 
-interface RateLimitActionOptions<TArgs extends any[]> {
+interface RateLimitActionOptions<TArgs extends unknown[]> {
   limiterId: string | string[];
   keyExtractor: (...args: TArgs) => string | Promise<string>;
   failOpen?: boolean;  // default: true
 }
 
-export function withRateLimitAction<TArgs extends any[], TReturn>(
+export function withRateLimitAction<TArgs extends unknown[], TReturn>(
   action: (...args: TArgs) => Promise<TReturn>,
   options: RateLimitActionOptions<TArgs>,
 ): (...args: TArgs) => Promise<TReturn | RateLimitActionError> {

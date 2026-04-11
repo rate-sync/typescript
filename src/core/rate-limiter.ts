@@ -253,6 +253,12 @@ export class RateLimiter {
     return this._timeout;
   }
 
+  /**
+   * Whether the limiter should block requests when the store is unavailable.
+   * NOTE: This field is stored but not enforced by RateLimiter itself.
+   * Use `failOpen` option on withRateLimit/withRateLimitAction wrappers instead.
+   * Per-limiter failClosed enforcement is planned for P1.
+   */
   get failClosed(): boolean {
     return this._failClosed;
   }

@@ -33,7 +33,7 @@ class Registry {
     } else {
       // postgres: not yet supported via registry
       throw new Error(
-        `Engine "${(config as EngineConfig).engine}" is not yet supported in the registry.`,
+        `Engine "${config.engine}" is not yet supported in the registry.`,
       );
     }
 
@@ -101,7 +101,7 @@ class Registry {
       id: newId,
       store,
       storeId: baseConfig.storeId,
-      algorithm: baseConfig.algorithm as 'token-bucket' | 'sliding-window',
+      algorithm: baseConfig.algorithm,
       ratePerSecond: baseConfig.ratePerSecond ?? undefined,
       maxConcurrent: baseConfig.maxConcurrent ?? undefined,
       limit: baseConfig.limit ?? undefined,

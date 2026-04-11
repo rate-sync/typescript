@@ -142,6 +142,9 @@ export class RedisStore implements RateLimitStore {
       ttl.toString(),
     ]);
 
+    if (!Array.isArray(result)) {
+      throw new Error(`Unexpected Redis script result: ${typeof result}`);
+    }
     return this._parseResult(result as unknown[]);
   }
 
@@ -210,6 +213,9 @@ export class RedisStore implements RateLimitStore {
       ttl.toString(),
     ]);
 
+    if (!Array.isArray(result)) {
+      throw new Error(`Unexpected Redis script result: ${typeof result}`);
+    }
     return this._parseResult(result as unknown[]);
   }
 

@@ -11,7 +11,7 @@ export function createTestStore(): RateLimitStore {
 export async function setupTestRateSync(limiters: Record<string, Partial<LimiterConfig>>): Promise<void> {
   await configureStore('__test_memory', { engine: 'memory' });
   for (const [id, config] of Object.entries(limiters)) {
-    configureLimiter(id, { store: '__test_memory', ...config } as LimiterConfig);
+    configureLimiter(id, { store: '__test_memory', ...config });
   }
 }
 
