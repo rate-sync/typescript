@@ -1,10 +1,10 @@
 import { MemoryStore } from '../engines/memory/index.js';
 import { configureStore, configureLimiter, initializeLimiter, initializeAllLimiters, checkLimiter, listLimiters, getLimiter, getStore } from '../core/registry.js';
-import type { LimiterConfig } from '../core/schemas.js';
+import type { LimiterConfig, MemoryEngineConfig } from '../core/schemas.js';
 import type { RateLimitStore } from '../engines/base.js';
 import type { RateLimiter } from '../core/rate-limiter.js';
 
-export function createTestStore(): RateLimitStore {
+export function createTestStore(_overrides?: Partial<MemoryEngineConfig>): RateLimitStore {
   return new MemoryStore();
 }
 

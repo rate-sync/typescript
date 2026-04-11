@@ -48,9 +48,11 @@ await limiter.initialize();
 In multi-tenant systems, a single noisy tenant can starve everyone else. Per-tenant rate limiting enforces fair usage — each tenant gets their share, and no one can monopolize your infrastructure.
 
 ```typescript
-// Each tenant gets their own enforced limit
-cloneLimiter('platform_api', `tenant:${tenantId}`);
-await acquire(`tenant:${tenantId}`);
+import { getOrCloneLimiter } from 'rate-sync';
+
+const limiter = getOrCloneLimiter('platform_api', `tenant:${tenantId}`);
+await limiter.initialize();
+await limiter.acquire();
 ```
 
 ### Webhook floods taking down your customers' endpoints

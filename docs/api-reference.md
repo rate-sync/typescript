@@ -650,7 +650,6 @@ interface RateLimiterMetrics {
   totalWaitTimeMs: number;
   avgWaitTimeMs: number;
   maxWaitTimeMs: number;
-  casFailures: number;
   timeouts: number;
   lastAcquisitionAt: number | null;
   currentConcurrent: number;
@@ -702,19 +701,13 @@ interface LimiterReadOnlyConfig {
 | `RateLimitExceededError` | Rate limit exceeded (carries 429 context) | `identifier`, `limit`, `remaining`, `resetAt`, `retryAfter`, `limiterId?` |
 
 ```typescript
-import { RateLimiterError, RateLimitExceededError } from 'rate-sync';
-
-try {
-  await limiter.checkLimit(userId);
-} catch (err) {
-  if (err instanceof RateLimitExceededError) {
-    const result = err.toResult(); // → RateLimitResult with allowed: false
-    return new Response('Too Many Requests', { status: 429 });
-  }
-  if (err instanceof RateLimiterError) {
-    // Any library error
-  }
+const result = await limiter.checkLimit(userId);
+if (!result.allowed) {
+  // Rate limited — result contains limit, remaining, retryAfter
+  console.log(`Rate limited. Retry in ${result.retryAfter}s`);
+  return;
 }
+// Proceed with operation
 ```
 
 ---
