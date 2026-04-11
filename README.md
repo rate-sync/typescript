@@ -1,14 +1,8 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/rate-sync/typescript/main/docs/assets/logo.png" alt="rate-sync" width="200">
-</p>
-
 <h1 align="center">rate-sync</h1>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/rate-sync"><img src="https://img.shields.io/npm/v/rate-sync.svg" alt="npm version"></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-18+-blue.svg" alt="Node.js 18+"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
-  <a href="https://github.com/rate-sync/typescript/actions"><img src="https://img.shields.io/github/actions/workflow/status/rate-sync/typescript/test.yml?branch=main&label=tests" alt="Tests"></a>
 </p>
 
 <p align="center">Distributed rate limiting for TypeScript with Redis or in-memory backends, and first-class Next.js integration.</p>
@@ -152,11 +146,10 @@ export default defineConfig({
 
 ```typescript
 import config from './rate-sync.config';
-import { setupRateSyncFromConfig, acquire } from 'rate-sync';
+import { setupRateSyncFromConfig } from 'rate-sync';
 
 await setupRateSyncFromConfig(config);
-
-await acquire('api'); // Blocks until rate limit allows
+// All stores connected and limiters initialized — ready to handle requests
 ```
 
 ## Usage Patterns
