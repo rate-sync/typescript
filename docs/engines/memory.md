@@ -12,20 +12,15 @@ No additional dependencies required.
 
 ## Quick Start
 
-```toml
-# rate-sync.toml
-[stores.local]
-engine = "memory"
-
-[limiters.api]
-store = "local"
-rate_per_second = 10
-```
-
 ```typescript
-import { setupRateSync, acquire } from 'rate-sync';
+import { defineConfig, setupRateSyncFromConfig, acquire } from 'rate-sync';
 
-await setupRateSync('./rate-sync.toml');
+const config = defineConfig({
+  stores: { local: { engine: 'memory' } },
+  limiters: { api: { store: 'local', ratePerSecond: 10 } },
+});
+
+await setupRateSyncFromConfig(config);
 await acquire('api');
 ```
 
@@ -51,61 +46,53 @@ await initializeAllLimiters();
 
 ### Development Setup with Relaxed Limits
 
-```toml
-[stores.dev]
-engine = "memory"
-
-[limiters.api]
-store = "dev"
-rate_per_second = 100
-
-[limiters.auth]
-store = "dev"
-algorithm = "sliding-window"
-limit = 100
-window_seconds = 60
+```typescript
+export default defineConfig({
+  stores: { dev: { engine: 'memory' } },
+  limiters: {
+    api: { store: 'dev', ratePerSecond: 100 },
+    auth: { store: 'dev', algorithm: 'sliding-window', limit: 100, windowSeconds: 60 },
+  },
+});
 ```
 
 ### Token Bucket (Default)
 
 Controls throughput — allows one request every `1 / ratePerSecond` seconds:
 
-```toml
-[limiters.api]
-store = "local"
-rate_per_second = 10         # 10 req/sec — 1 request every 100ms
+```typescript
+configureLimiter('api', {
+  store: 'local',
+  ratePerSecond: 10, // 10 req/sec — 1 request every 100ms
+});
 ```
 
 ### Sliding Window
 
 Counts requests in a time window:
 
-```toml
-[limiters.login]
-store = "local"
-algorithm = "sliding-window"
-limit = 5
-window_seconds = 300          # 5 attempts per 5 minutes
+```typescript
+configureLimiter('login', {
+  store: 'local',
+  algorithm: 'sliding-window',
+  limit: 5,
+  windowSeconds: 300, // 5 attempts per 5 minutes
+});
 ```
 
 ### Migration to Distributed
 
 When ready for production, switch to Redis — only the store config changes:
 
-```toml
-# Change this:
-[stores.dev]
-engine = "memory"
+```typescript
+// Change this:
+stores: { dev: { engine: 'memory' } }
 
-# To this:
-[stores.prod]
-engine = "redis"
-url = "${REDIS_URL}"
+// To this:
+stores: { prod: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' } }
 
-# Limiters stay the same:
-[limiters.api]
-store = "prod"   # ← just update the store reference
-rate_per_second = 10
+// Limiters stay the same — just update the store reference:
+limiters: { api: { store: 'prod', ratePerSecond: 10 } }
 ```
 
 ## Troubleshooting
@@ -125,4 +112,4 @@ rate_per_second = 10
 ## See Also
 
 - [Redis Engine](redis.md) — Recommended for production
-- [Configuration Guide](../configuration.md) — Full config reference
+- [Configuration Guide](../configuration.md) — Config reference

@@ -10,7 +10,7 @@ export {
 } from './core/registry.js';
 
 // Config
-export { loadConfig, defineConfig, setupRateSync, setupRateSyncFromConfig } from './core/config.js';
+export { defineConfig, setupRateSyncFromConfig } from './core/config.js';
 
 // Identifiers
 export { hashIdentifier, combineIdentifiers } from './core/identifiers.js';

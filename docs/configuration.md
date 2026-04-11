@@ -1,15 +1,15 @@
 # Configuration Guide
 
-rate-sync supports TypeScript config files (recommended), TOML file configuration, or direct programmatic setup.
+rate-sync supports TypeScript config files (recommended) or direct programmatic setup.
 
 ## Configuration Methods
 
-| Method | TypeScript Config | TOML | Programmatic |
-|--------|-------------------|------|--------------|
-| Type-safe | Yes | No | Yes |
-| Environment variable expansion | Via `process.env` | Built-in `${VAR}` syntax | Via code |
-| Runtime modification | No | No | Yes |
-| Best for | TypeScript projects | Non-TS / env-heavy config | Dynamic config |
+| Method | TypeScript Config | Programmatic |
+|--------|-------------------|--------------|
+| Type-safe | Yes | Yes |
+| Environment variable expansion | Via `process.env` | Via code |
+| Runtime modification | No | Yes |
+| Best for | TypeScript projects | Dynamic config |
 
 ## TypeScript Configuration (Recommended)
 
@@ -66,62 +66,6 @@ export default defineConfig({
 
 ---
 
-## Alternative: TOML Files
-
-TOML configuration is useful when you need built-in environment variable expansion syntax or are working in non-TypeScript projects.
-
-> **Requires:** `pnpm add smol-toml` (`smol-toml` is an optional dependency)
-
-### Basic Structure
-
-```toml
-# rate-sync.toml
-
-# Stores define HOW rate limiting is coordinated
-[stores.local]
-engine = "memory"
-
-# Limiters define WHAT to rate limit
-[limiters.api]
-store = "local"
-rate_per_second = 10
-```
-
-### Loading the Config
-
-```typescript
-import { loadConfig, setupRateSync } from 'rate-sync';
-
-// Option 1: Load config only (does not initialize limiters)
-await loadConfig('./rate-sync.toml');
-
-// Option 2: Load and initialize all limiters (recommended)
-await setupRateSync('./rate-sync.toml');
-```
-
-### Environment Variable Expansion
-
-TOML values support `${VAR}` and `${VAR:-default}` syntax:
-
-```toml
-[stores.prod]
-engine = "redis"
-url = "${REDIS_URL}"                           # Required env var
-url = "${REDIS_URL:-redis://localhost:6379}"   # With default
-```
-
-Numeric strings are automatically coerced:
-
-```toml
-[limiters.api]
-store = "prod"
-rate_per_second = "${API_RATE_LIMIT:-100}"     # Becomes number 100
-```
-
-> **Note:** Algorithm names use hyphens (`token-bucket`, `sliding-window`) and are NOT converted by key normalisation. Write them verbatim.
-
----
-
 ## Low-Level Programmatic Configuration
 
 ```typescript
@@ -142,11 +86,6 @@ await initializeAllLimiters();
 |--------|------|---------|-------------|
 | `engine` | `string` | Required | `"memory"` |
 
-```toml
-[stores.dev]
-engine = "memory"
-```
-
 ```typescript
 await configureStore('dev', { engine: 'memory' });
 ```
@@ -162,24 +101,14 @@ await configureStore('dev', { engine: 'memory' });
 | `keyPrefix` | `string` | `"rate_limit"` | Key namespace |
 | `socketTimeout` | `number` | `5000` | Socket timeout (ms) |
 
-```toml
-[stores.prod]
-engine = "redis"
-url = "${REDIS_URL:-redis://localhost:6379}"
-key_prefix = "myapp:ratelimit"
-socket_timeout = 10000
-```
-
 ```typescript
 await configureStore('prod', {
   engine: 'redis',
-  url: 'redis://localhost:6379',
+  url: process.env.REDIS_URL ?? 'redis://localhost:6379',
   keyPrefix: 'myapp:ratelimit',
   socketTimeout: 10000,
 });
 ```
-
-> **TOML note:** TOML keys use `snake_case` (e.g., `key_prefix`). They are automatically converted to `camelCase` when loaded. TypeScript programmatic config uses `camelCase` directly.
 
 ---
 
@@ -203,17 +132,7 @@ await configureStore('prod', {
 
 At least one of `ratePerSecond` or `maxConcurrent` required.
 
-```toml
-# TOML
-[limiters.api]
-store = "prod"
-rate_per_second = 100
-max_concurrent = 50
-timeout = 30000
-```
-
 ```typescript
-// Programmatic
 configureLimiter('api', {
   store: 'prod',
   ratePerSecond: 100,
@@ -231,17 +150,7 @@ configureLimiter('api', {
 
 Supported by both Memory and Redis engines.
 
-```toml
-# TOML
-[limiters.login]
-store = "prod"
-algorithm = "sliding-window"
-limit = 5
-window_seconds = 300
-```
-
 ```typescript
-// Programmatic
 configureLimiter('login', {
   store: 'prod',
   algorithm: 'sliding-window',
@@ -256,59 +165,44 @@ configureLimiter('login', {
 
 ### Development Setup
 
-```toml
-[stores.dev]
-engine = "memory"
-
-[limiters.api]
-store = "dev"
-rate_per_second = 100
+```typescript
+export default defineConfig({
+  stores: { dev: { engine: 'memory' } },
+  limiters: { api: { store: 'dev', ratePerSecond: 100 } },
+});
 ```
 
 ### Production Setup
 
-```toml
-[stores.prod]
-engine = "redis"
-url = "${REDIS_URL}"
-
-[limiters.api]
-store = "prod"
-rate_per_second = 1000
-max_concurrent = 200
-timeout = 30000
-
-[limiters.partner_api]
-store = "prod"
-rate_per_second = 10
-timeout = 60000
-fail_closed = true
-
-[limiters.login]
-store = "prod"
-algorithm = "sliding-window"
-limit = 5
-window_seconds = 300
+```typescript
+export default defineConfig({
+  stores: {
+    prod: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+  },
+  limiters: {
+    api: { store: 'prod', ratePerSecond: 1000, maxConcurrent: 200, timeout: 30000 },
+    partner_api: { store: 'prod', ratePerSecond: 10, timeout: 60000, failClosed: true },
+    login: { store: 'prod', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+  },
+});
 ```
 
 ### Multi-Tenant Setup
 
-```toml
-[stores.shared]
-engine = "redis"
-url = "${REDIS_URL}"
-
-[limiters.tenant_base]
-store = "shared"
-rate_per_second = 10
-
-[limiters.tenant_premium]
-store = "shared"
-rate_per_second = 100
+```typescript
+export default defineConfig({
+  stores: {
+    shared: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+  },
+  limiters: {
+    tenant_base: { store: 'shared', ratePerSecond: 10 },
+    tenant_premium: { store: 'shared', ratePerSecond: 100 },
+  },
+});
 ```
 
 ```typescript
-import { getOrCloneLimiter, acquire } from 'rate-sync';
+import { getOrCloneLimiter, getLimiter, acquire } from 'rate-sync';
 
 // Get or create a per-tenant limiter cloned from 'tenant_base'
 getOrCloneLimiter('tenant_base', `tenant:${tenantId}`);
@@ -321,24 +215,23 @@ const result = await limiter.checkLimit(tenantId);
 
 ### Environment-Based Switching
 
-```toml
-[stores.main]
-engine = "${RATE_LIMIT_ENGINE:-memory}"
-url = "${REDIS_URL:-}"
+```typescript
+// rate-sync.config.ts
+const isProduction = process.env.NODE_ENV === 'production';
 
-[limiters.api]
-store = "main"
-rate_per_second = "${API_RATE_LIMIT:-10}"
-```
-
-```bash
-# Development
-export RATE_LIMIT_ENGINE=memory
-
-# Production
-export RATE_LIMIT_ENGINE=redis
-export REDIS_URL=redis://prod-redis:6379
-export API_RATE_LIMIT=1000
+export default defineConfig({
+  stores: {
+    main: isProduction
+      ? { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' }
+      : { engine: 'memory' },
+  },
+  limiters: {
+    api: {
+      store: 'main',
+      ratePerSecond: Number(process.env.API_RATE_LIMIT ?? 10),
+    },
+  },
+});
 ```
 
 ---

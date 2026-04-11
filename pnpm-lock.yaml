@@ -11,9 +11,6 @@ importers:
       pg:
         specifier: '>=8.0.0'
         version: 8.20.0
-      smol-toml:
-        specifier: ^1.0.0
-        version: 1.6.1
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -926,10 +923,6 @@ packages:
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
 
-  smol-toml@1.6.1:
-    resolution: {integrity: sha512-dWUG8F5sIIARXih1DTaQAX4SsiTXhInKf1buxdY9DIg4ZYPZK5nGM1VRIYmEbDbsHt7USo99xSLFu5Q1IqTmsg==}
-    engines: {node: '>= 18'}
-
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
@@ -1791,8 +1784,6 @@ snapshots:
       loose-envify: 1.4.0
 
   siginfo@2.0.0: {}
-
-  smol-toml@1.6.1: {}
 
   source-map-js@1.2.1: {}
 

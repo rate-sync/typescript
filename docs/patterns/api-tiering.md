@@ -6,29 +6,20 @@ Apply different rate limits to different user tiers (free, pro, enterprise).
 
 ## Configuration
 
-```toml
-# rate-sync.toml
-[stores.redis]
-engine = "redis"
-url = "${REDIS_URL}"
+```typescript
+// rate-sync.config.ts
+import { defineConfig } from 'rate-sync';
 
-[limiters.api_free]
-store = "redis"
-algorithm = "sliding-window"
-limit = 100
-window_seconds = 3600
-
-[limiters.api_pro]
-store = "redis"
-algorithm = "sliding-window"
-limit = 1000
-window_seconds = 3600
-
-[limiters.api_enterprise]
-store = "redis"
-algorithm = "sliding-window"
-limit = 10000
-window_seconds = 3600
+export default defineConfig({
+  stores: {
+    redis: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+  },
+  limiters: {
+    api_free: { store: 'redis', algorithm: 'sliding-window', limit: 100, windowSeconds: 3600 },
+    api_pro: { store: 'redis', algorithm: 'sliding-window', limit: 1000, windowSeconds: 3600 },
+    api_enterprise: { store: 'redis', algorithm: 'sliding-window', limit: 10000, windowSeconds: 3600 },
+  },
+});
 ```
 
 ## Implementation
@@ -109,27 +100,14 @@ export const GET = withRateLimit(
 
 ## Per-Endpoint Tiering
 
-```toml
-# Generous for reads
-[limiters.read_free]
-store = "redis"
-algorithm = "sliding-window"
-limit = 1000
-window_seconds = 3600
-
-# Strict for writes
-[limiters.write_free]
-store = "redis"
-algorithm = "sliding-window"
-limit = 100
-window_seconds = 3600
-
-# Very strict for exports
-[limiters.export_free]
-store = "redis"
-algorithm = "sliding-window"
-limit = 10
-window_seconds = 86400
+```typescript
+// In your defineConfig limiters:
+// Generous for reads
+read_free: { store: 'redis', algorithm: 'sliding-window', limit: 1000, windowSeconds: 3600 },
+// Strict for writes
+write_free: { store: 'redis', algorithm: 'sliding-window', limit: 100, windowSeconds: 3600 },
+// Very strict for exports
+export_free: { store: 'redis', algorithm: 'sliding-window', limit: 10, windowSeconds: 86400 },
 ```
 
 ```typescript

@@ -13,51 +13,37 @@ Peer dependency `next >= 14.0.0` is required.
 
 ## Setup
 
-### 1. Create rate-sync.toml
+### 1. Create rate-sync.config.ts
 
-```toml
-[stores.redis]
-engine = "redis"
-url = "${REDIS_URL:-redis://localhost:6379}"
+```typescript
+// rate-sync.config.ts
+import { defineConfig } from 'rate-sync';
 
-[limiters.api]
-store = "redis"
-rate_per_second = 100
-max_concurrent = 50
-
-[limiters.auth]
-store = "redis"
-algorithm = "sliding-window"
-limit = 5
-window_seconds = 300
+export default defineConfig({
+  stores: {
+    redis: {
+      engine: 'redis',
+      url: process.env.REDIS_URL ?? 'redis://localhost:6379',
+    },
+  },
+  limiters: {
+    api: { store: 'redis', ratePerSecond: 100, maxConcurrent: 50 },
+    auth: { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+  },
+});
 ```
 
 ### 2. Initialize on Startup
 
-Add a module-level initializer that runs once before your app handles requests:
-
-```typescript
-// lib/rate-limit.ts
-import { setupRateSync } from 'rate-sync';
-import path from 'node:path';
-
-let initialized = false;
-
-export async function ensureRateSync() {
-  if (initialized) return;
-  await setupRateSync(path.join(process.cwd(), 'rate-sync.toml'));
-  initialized = true;
-}
-```
-
-Or use Next.js `instrumentation.ts` (Next.js 13.4+):
+Use Next.js `instrumentation.ts` (Next.js 13.4+):
 
 ```typescript
 // instrumentation.ts  (place at project root)
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const { setupRateSync } = await import('rate-sync');
-    await setupRateSync('./rate-sync.toml');
+    const { setupRateSyncFromConfig } = await import('rate-sync');
+    const { default: config } = await import('./rate-sync.config');
+    await setupRateSyncFromConfig(config);
   }
 }
 ```
@@ -261,21 +247,13 @@ export const config = {
 
 ## Auth Protection Pattern
 
-Protect login and password-reset endpoints against brute force:
+Protect login and password-reset endpoints against brute force. Add to your `rate-sync.config.ts`:
 
-```toml
-# rate-sync.toml
-[limiters.auth_ip]
-store = "redis"
-algorithm = "sliding-window"
-limit = 30
-window_seconds = 60
-
-[limiters.auth_credential]
-store = "redis"
-algorithm = "sliding-window"
-limit = 5
-window_seconds = 300
+```typescript
+limiters: {
+  auth_ip: { store: 'redis', algorithm: 'sliding-window', limit: 30, windowSeconds: 60 },
+  auth_credential: { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+}
 ```
 
 ```typescript
@@ -327,6 +305,6 @@ export async function POST(req: Request) {
 ## See Also
 
 - [API Reference](api-reference.md) — Full `withRateLimit`, `withRateLimitAction`, `getClientIp` signatures
-- [Configuration Guide](configuration.md) — TOML config and limiter setup
+- [Configuration Guide](configuration.md) — TypeScript config and limiter setup
 - [Patterns: Authentication Protection](patterns/authentication-protection.md) — Auth endpoint patterns
 - [Patterns: API Tiering](patterns/api-tiering.md) — Per-tier rate limits

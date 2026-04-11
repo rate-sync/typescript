@@ -36,27 +36,29 @@ npm install rate-sync redis          # Production (Redis backend)
 
 ### 2. Configure
 
-Create `rate-sync.toml`:
+Create `rate-sync.config.ts`:
 
-```toml
-[stores.main]
-engine = "redis"
-url = "${REDIS_URL:-redis://localhost:6379}"
+```typescript
+import { defineConfig } from 'rate-sync';
 
-[limiters.api]
-store = "main"
-rate_per_second = 100
-max_concurrent = 50
-timeout = 30000
+export default defineConfig({
+  stores: {
+    main: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+  },
+  limiters: {
+    api: { store: 'main', ratePerSecond: 100, maxConcurrent: 50, timeout: 30000 },
+  },
+});
 ```
 
 ### 3. Use
 
 ```typescript
-import { setupRateSync, acquire } from 'rate-sync';
+import config from './rate-sync.config';
+import { setupRateSyncFromConfig, acquire } from 'rate-sync';
 
 // Load config and initialize all limiters on startup
-await setupRateSync('./rate-sync.toml');
+await setupRateSyncFromConfig(config);
 
 // Acquire a slot (blocks until available)
 await acquire('api');
@@ -87,38 +89,26 @@ Application Instances          Coordination Store
 
 ### Rate Limiting (Throughput)
 
-```toml
-[limiters.external_api]
-store = "redis"
-rate_per_second = 10
+```typescript
+configureLimiter('external_api', { store: 'redis', ratePerSecond: 10 });
 ```
 
 ### Concurrency Limiting (Parallelism)
 
-```toml
-[limiters.db_pool]
-store = "redis"
-max_concurrent = 20
+```typescript
+configureLimiter('db_pool', { store: 'redis', maxConcurrent: 20 });
 ```
 
 ### Combined (Production)
 
-```toml
-[limiters.production]
-store = "redis"
-rate_per_second = 100
-max_concurrent = 50
-timeout = 30000
+```typescript
+configureLimiter('production', { store: 'redis', ratePerSecond: 100, maxConcurrent: 50, timeout: 30000 });
 ```
 
 ### Auth Protection (Sliding Window)
 
-```toml
-[limiters.login]
-store = "redis"
-algorithm = "sliding-window"
-limit = 5
-window_seconds = 300
+```typescript
+configureLimiter('login', { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 });
 ```
 
 ## Support

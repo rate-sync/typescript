@@ -65,9 +65,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {},
-  "optionalDependencies": {
-    "smol-toml": "^1.0.0"
-  },
   "peerDependencies": {
     "next": ">=14.0.0",
     "pg": ">=8.0.0",

@@ -87,30 +87,6 @@ configureLimiter('login', {
 
 ---
 
-### loadConfig
-
-Load and apply a TOML configuration file.
-
-Reads the file, expands `${ENV_VAR}` references, converts `snake_case` keys to `camelCase`, then registers all stores and limiters. Does not initialize limiters — call `initializeAllLimiters()` after if needed.
-
-```typescript
-async function loadConfig(configPath: string): Promise<void>
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `configPath` | `string` | Absolute or relative path to TOML file |
-
-**Throws:** `ConfigValidationError` if file cannot be read, parsed, or contains no stores/limiters.
-
-```typescript
-import { loadConfig } from 'rate-sync';
-
-await loadConfig('./rate-sync.toml');
-```
-
----
-
 ### defineConfig
 
 Identity function for type-safe programmatic configuration.
@@ -134,19 +110,20 @@ const config = defineConfig({
 
 ---
 
-### setupRateSync
+### setupRateSyncFromConfig
 
-Load a TOML config file and initialize all configured limiters. Combines `loadConfig` + `initializeAllLimiters` in one call.
+Configure rate-sync programmatically from a config object and initialize all limiters. The recommended one-call startup function for TypeScript projects.
 
 ```typescript
-async function setupRateSync(configPath: string): Promise<void>
+async function setupRateSyncFromConfig(config: RateSyncConfig): Promise<void>
 ```
 
 ```typescript
-import { setupRateSync } from 'rate-sync';
+import config from './rate-sync.config';
+import { setupRateSyncFromConfig } from 'rate-sync';
 
-// Typically called once at application startup
-await setupRateSync('./rate-sync.toml');
+// Typically called once at application startup (e.g., instrumentation.ts)
+await setupRateSyncFromConfig(config);
 ```
 
 ---

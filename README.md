@@ -21,12 +21,13 @@
 
 Attackers try thousands of password combinations. A sliding window limiter on your login endpoint stops them — and composite limiting blocks both single-IP attacks and distributed botnets hitting the same account.
 
-```toml
-[limiters.auth_credential]
-store = "redis"
-algorithm = "sliding-window"
-limit = 5                # 5 attempts
-window_seconds = 300     # per 5 minutes
+```typescript
+configureLimiter('auth_credential', {
+  store: 'redis',
+  algorithm: 'sliding-window',
+  limit: 5,          // 5 attempts
+  windowSeconds: 300, // per 5 minutes
+});
 ```
 
 > **Deep dive:** [Authentication Protection](https://github.com/rate-sync/typescript/blob/main/docs/patterns/authentication-protection.md)
@@ -67,36 +68,39 @@ await limiter.using(async () => {
 
 Five concurrent 1GB uploads can exhaust server memory. PDF generation can peg every CPU core. Concurrency limiting caps how many heavy operations run simultaneously — completely separate from request rate.
 
-```toml
-[limiters.upload]
-store = "redis"
-max_concurrent = 10     # max 10 uploads at once
-timeout = 300000        # 5 minutes in ms
+```typescript
+configureLimiter('upload', {
+  store: 'redis',
+  maxConcurrent: 10,  // max 10 uploads at once
+  timeout: 300000,    // 5 minutes in ms
+});
 ```
 
 ### Background workers overwhelming third-party APIs
 
 You have 20 workers calling the Stripe API, which allows 100 req/s. Without coordination, your workers exceed the limit and get throttled. rate-sync coordinates across all workers through a shared Redis backend.
 
-```toml
-[limiters.stripe_api]
-store = "redis"
-rate_per_second = 90    # stay under Stripe's 100/s limit
-max_concurrent = 10     # max 10 in-flight calls
+```typescript
+configureLimiter('stripe_api', {
+  store: 'redis',
+  ratePerSecond: 90, // stay under Stripe's 100/s limit
+  maxConcurrent: 10, // max 10 in-flight calls
+});
 ```
 
 ### Rate limits that actually work across multiple servers
 
 In-memory counters reset when a process restarts and can't coordinate across instances. rate-sync uses Redis as a shared backend, so limits are enforced consistently across your entire fleet.
 
-```toml
-[stores.redis]
-engine = "redis"
-url = "${REDIS_URL}"
-
-[limiters.api]
-store = "redis"        # all instances share this
-rate_per_second = 100
+```typescript
+export default defineConfig({
+  stores: {
+    redis: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+  },
+  limiters: {
+    api: { store: 'redis', ratePerSecond: 100 }, // all instances share this
+  },
+});
 ```
 
 ---
@@ -152,29 +156,6 @@ await setupRateSyncFromConfig(config);
 
 await acquire('api'); // Blocks until rate limit allows
 ```
-
-### Alternative: TOML Configuration
-
-If you prefer a TOML file (e.g. for environment-variable expansion or non-TypeScript projects):
-
-```toml
-# rate-sync.toml
-[stores.main]
-engine = "memory"
-
-[limiters.api]
-store = "main"
-rate_per_second = 10
-```
-
-```typescript
-import { setupRateSync, acquire } from 'rate-sync';
-
-await setupRateSync('./rate-sync.toml');
-await acquire('api');
-```
-
-> **Note:** TOML support requires `smol-toml` as an optional peer: `pnpm add smol-toml`
 
 ## Usage Patterns
 
@@ -270,21 +251,21 @@ await limiter.using(async () => {
 
 ### Memory (development / single-process)
 
-```toml
-[stores.local]
-engine = "memory"
+```typescript
+await configureStore('local', { engine: 'memory' });
 ```
 
 No dependencies required. State is lost on restart and not shared across processes.
 
 ### Redis (production / distributed)
 
-```toml
-[stores.redis]
-engine = "redis"
-url = "${REDIS_URL}"
-key_prefix = "myapp:"       # optional namespace
-socket_timeout = 2000       # ms, optional
+```typescript
+await configureStore('redis', {
+  engine: 'redis',
+  url: process.env.REDIS_URL ?? 'redis://localhost:6379',
+  keyPrefix: 'myapp:',    // optional namespace
+  socketTimeout: 2000,    // ms, optional
+});
 ```
 
 Requires `redis >= 4.0.0` as a peer dependency.
@@ -299,24 +280,26 @@ PostgreSQL backend is planned. The `PostgresEngineConfig` type is exported but n
 
 Controls request throughput with optional concurrency limits. Best for API rate limiting and background job throttling.
 
-```toml
-[limiters.external_api]
-store = "redis"
-rate_per_second = 100     # max 100 req/sec
-max_concurrent = 10       # max 10 in-flight requests
-timeout = 30000           # wait up to 30s (ms)
+```typescript
+configureLimiter('external_api', {
+  store: 'redis',
+  ratePerSecond: 100, // max 100 req/sec
+  maxConcurrent: 10,  // max 10 in-flight requests
+  timeout: 30000,     // wait up to 30s (ms)
+});
 ```
 
 ### Sliding Window
 
 Counts requests in a fixed time window. Best for login protection and quota enforcement.
 
-```toml
-[limiters.login]
-store = "redis"
-algorithm = "sliding-window"
-limit = 5                 # max 5 attempts
-window_seconds = 300      # per 5 minutes
+```typescript
+configureLimiter('login', {
+  store: 'redis',
+  algorithm: 'sliding-window',
+  limit: 5,           // max 5 attempts
+  windowSeconds: 300, // per 5 minutes
+});
 ```
 
 ## Next.js Integration
@@ -385,51 +368,6 @@ export default defineConfig({
   },
 });
 ```
-
-### TOML Config (alternative)
-
-Full TOML reference:
-
-```toml
-# rate-sync.toml
-
-# --- Stores ---
-
-[stores.memory]
-engine = "memory"
-
-[stores.redis]
-engine = "redis"
-url = "${REDIS_URL:-redis://localhost:6379/0}"
-db = 0                 # optional, default: 0
-password = "${REDIS_PASSWORD}"  # optional
-key_prefix = "myapp:"  # optional namespace for all keys
-socket_timeout = 2000  # ms, optional
-
-# --- Limiters ---
-
-# Token bucket — rate + concurrency
-[limiters.api]
-store = "redis"
-rate_per_second = 100
-max_concurrent = 10
-timeout = 30000        # ms to wait for a slot before giving up
-fail_closed = false    # if true, block requests when store is unavailable
-
-# Sliding window — count in window
-[limiters.login]
-store = "redis"
-algorithm = "sliding-window"
-limit = 5
-window_seconds = 300
-```
-
-**Key rules:**
-
-- `algorithm` must be `"token-bucket"` (default) or `"sliding-window"` — hyphens, not underscores
-- TOML keys use `snake_case`; they are automatically converted to `camelCase` for the TypeScript API
-- Environment variables expand with `${VAR}` or `${VAR:-default}`; numeric strings are auto-cast to numbers
-- At least one of `rate_per_second`, `max_concurrent`, or `limit` must be set per limiter
 
 ## Documentation
 

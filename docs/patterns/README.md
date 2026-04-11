@@ -27,23 +27,26 @@ Common patterns for implementing rate limiting with rate-sync.
 
 ## Quick Start
 
-```toml
-# rate-sync.toml
-[stores.redis]
-engine = "redis"
-url = "${REDIS_URL}"
+```typescript
+// rate-sync.config.ts
+import { defineConfig } from 'rate-sync';
 
-[limiters.api]
-store = "redis"
-algorithm = "token-bucket"
-rate_per_second = 100
+export default defineConfig({
+  stores: {
+    redis: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+  },
+  limiters: {
+    api: { store: 'redis', algorithm: 'token-bucket', ratePerSecond: 100 },
+  },
+});
 ```
 
 ```typescript
-import { setupRateSync, checkLimiter } from 'rate-sync';
+import { setupRateSyncFromConfig, checkLimiter } from 'rate-sync';
 import { getClientIp } from 'rate-sync/next';
+import config from './rate-sync.config';
 
-await setupRateSync('./rate-sync.toml');
+await setupRateSyncFromConfig(config);
 
 // In your handler:
 const result = await checkLimiter('api', getClientIp(req));

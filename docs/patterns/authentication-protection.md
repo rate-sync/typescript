@@ -6,25 +6,21 @@ Protect auth endpoints against brute force, credential stuffing, and account enu
 
 ## Configuration
 
-```toml
-# rate-sync.toml
-[stores.redis]
-engine = "redis"
-url = "${REDIS_URL}"
+```typescript
+// rate-sync.config.ts
+import { defineConfig } from 'rate-sync';
 
-# Layer 1: IP-based (stops scanning)
-[limiters.auth_ip]
-store = "redis"
-algorithm = "sliding-window"
-limit = 30
-window_seconds = 60
-
-# Layer 2: Credential-based (stops brute force)
-[limiters.auth_credential]
-store = "redis"
-algorithm = "sliding-window"
-limit = 5
-window_seconds = 300
+export default defineConfig({
+  stores: {
+    redis: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+  },
+  limiters: {
+    // Layer 1: IP-based (stops scanning)
+    auth_ip: { store: 'redis', algorithm: 'sliding-window', limit: 30, windowSeconds: 60 },
+    // Layer 2: Credential-based (stops brute force)
+    auth_credential: { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+  },
+});
 ```
 
 ## Implementation
@@ -98,18 +94,10 @@ export const loginAction = withRateLimitAction(
 
 ### Password Reset (Stricter)
 
-```toml
-[limiters.reset_ip]
-store = "redis"
-algorithm = "sliding-window"
-limit = 5
-window_seconds = 600
-
-[limiters.reset_email]
-store = "redis"
-algorithm = "sliding-window"
-limit = 3
-window_seconds = 3600
+```typescript
+// In your defineConfig limiters:
+reset_ip: { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 600 },
+reset_email: { store: 'redis', algorithm: 'sliding-window', limit: 3, windowSeconds: 3600 },
 ```
 
 ```typescript
@@ -135,12 +123,9 @@ export async function POST(req: Request) {
 
 ### Registration (Anti-Spam)
 
-```toml
-[limiters.register_ip]
-store = "redis"
-algorithm = "sliding-window"
-limit = 3
-window_seconds = 3600
+```typescript
+// In your defineConfig limiters:
+register_ip: { store: 'redis', algorithm: 'sliding-window', limit: 3, windowSeconds: 3600 },
 ```
 
 ```typescript

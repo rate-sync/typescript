@@ -22,21 +22,19 @@ npm install rate-sync redis
 
 ## Quick Start
 
-```toml
-# rate-sync.toml
-[stores.redis]
-engine = "redis"
-url = "redis://localhost:6379"
-
-[limiters.api]
-store = "redis"
-rate_per_second = 100
-```
-
 ```typescript
-import { setupRateSync, checkLimiter } from 'rate-sync';
+import { defineConfig, setupRateSyncFromConfig, checkLimiter } from 'rate-sync';
 
-await setupRateSync('./rate-sync.toml');
+const config = defineConfig({
+  stores: {
+    redis: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+  },
+  limiters: {
+    api: { store: 'redis', ratePerSecond: 100 },
+  },
+});
+
+await setupRateSyncFromConfig(config);
 
 const result = await checkLimiter('api', userId);
 if (!result.allowed) {
@@ -55,8 +53,6 @@ if (!result.allowed) {
 | `keyPrefix` | `string` | `"rate_limit"` | Key prefix for namespacing |
 | `socketTimeout` | `number` | `5000` | Socket timeout (ms) |
 
-> **TOML note:** Keys in TOML use `snake_case` (e.g., `key_prefix`, `socket_timeout`). They are converted to `camelCase` automatically when loaded.
-
 ## Key Layout
 
 The Redis store writes these key patterns (default prefix `rate_limit`):
@@ -69,11 +65,12 @@ The Redis store writes these key patterns (default prefix `rate_limit`):
 
 Use `keyPrefix` to namespace multiple applications sharing the same Redis instance:
 
-```toml
-[stores.myapp]
-engine = "redis"
-url = "${REDIS_URL}"
-key_prefix = "myapp:rl"
+```typescript
+await configureStore('myapp', {
+  engine: 'redis',
+  url: process.env.REDIS_URL ?? 'redis://localhost:6379',
+  keyPrefix: 'myapp:rl',
+});
 ```
 
 ## Advanced Usage
@@ -82,36 +79,37 @@ key_prefix = "myapp:rl"
 
 Controls throughput — allows at most `ratePerSecond` requests per second. Optionally limits parallelism with `maxConcurrent`:
 
-```toml
-[limiters.api]
-store = "redis"
-rate_per_second = 100
-max_concurrent = 50
+```typescript
+configureLimiter('api', {
+  store: 'redis',
+  ratePerSecond: 100,
+  maxConcurrent: 50,
+});
 ```
 
 ### Sliding Window
 
 Counts requests in a rolling time window. Ideal for auth protection or abuse prevention:
 
-```toml
-[limiters.login]
-store = "redis"
-algorithm = "sliding-window"
-limit = 5
-window_seconds = 300
+```typescript
+configureLimiter('login', {
+  store: 'redis',
+  algorithm: 'sliding-window',
+  limit: 5,
+  windowSeconds: 300,
+});
 ```
 
 ### Production Configuration
 
-```toml
-[stores.redis_prod]
-engine = "redis"
-url = "rediss://:${REDIS_PASSWORD}@redis.internal:6380"
-socket_timeout = 10000
-key_prefix = "myapp"
+```typescript
+await configureStore('redis_prod', {
+  engine: 'redis',
+  url: `rediss://:${process.env.REDIS_PASSWORD}@redis.internal:6380`,
+  socketTimeout: 10000,
+  keyPrefix: 'myapp',
+});
 ```
-
-### Programmatic Configuration
 
 ```typescript
 import { configureStore, configureLimiter, initializeAllLimiters } from 'rate-sync';
@@ -213,7 +211,7 @@ Returns: new counter value, or 0 if already at zero
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| `Error: RedisStore not initialized` | `initialize()` not called | Call `initializeLimiter()` or `setupRateSync()` first |
+| `Error: RedisStore not initialized` | `initialize()` not called | Call `initializeLimiter()` or `setupRateSyncFromConfig()` first |
 | `connect ECONNREFUSED` | Redis unreachable | Check host/port, network, Redis status |
 | Rate limiting too strict | Misconfiguration | Verify `ratePerSecond` and algorithm values |
 | Keys never expire | Clock drift or TTL issue | Check `socketTimeout`, verify server clocks |
@@ -229,5 +227,5 @@ Returns: new counter value, or 0 if already at zero
 ## See Also
 
 - [Memory Engine](memory.md) — Development alternative
-- [Configuration Guide](../configuration.md) — Full TOML reference
+- [Configuration Guide](../configuration.md) — Config reference
 - [API Reference](../api-reference.md) — `configureStore`, `RedisEngineConfig`
