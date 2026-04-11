@@ -1,5 +1,5 @@
 import { checkLimiter, initializeLimiter, getLimiter } from '../../core/registry.js';
-import { getRateLimitHeaders } from './headers.js';
+import { getRateLimitHeaders, setRateLimitHeaders } from './headers.js';
 import type { RateLimitResult } from '../../core/schemas.js';
 
 type NextRequest = { headers: { get(name: string): string | null }; url: string };
@@ -53,9 +53,8 @@ export function withRateLimit(
     // Handler call is OUTSIDE try/catch — errors propagate normally
     const response = await handler(req);
     if (lastResult) {
-      const headers = getRateLimitHeaders(lastResult);
       const newHeaders = new Headers(response.headers);
-      for (const [k, v] of Object.entries(headers)) newHeaders.set(k, v);
+      setRateLimitHeaders(newHeaders, lastResult);
       return new Response(response.body, { status: response.status, statusText: response.statusText, headers: newHeaders });
     }
     return response;

@@ -139,7 +139,10 @@ export class MemoryStore implements RateLimitStore {
     }
 
     // Prune expired entries (on-demand cleanup — no setInterval)
-    state.timestamps = state.timestamps.filter((ts) => ts > cutoff);
+    // Only allocate new array if there are entries to prune
+    if (state.timestamps.length > 0 && state.timestamps[0] <= cutoff) {
+      state.timestamps = state.timestamps.filter((ts) => ts > cutoff);
+    }
 
     const count = state.timestamps.length;
 

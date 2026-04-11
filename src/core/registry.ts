@@ -164,6 +164,7 @@ class Registry {
 
     const g = globalThis as unknown as { __rateSyncRegistry?: Registry };
     delete g.__rateSyncRegistry;
+    _cached = null;
   }
 }
 
@@ -171,15 +172,18 @@ class Registry {
 // Singleton via globalThis (hot-reload safe)
 // ---------------------------------------------------------------------------
 
+let _cached: Registry | null = null;
+
 /**
  * Returns the global Registry instance, creating a new one if it doesn't exist.
- * Reading from globalThis on every call ensures that after closeAll() deletes
- * the singleton, the next call gets a fresh Registry rather than the stale
- * module-level reference.
+ * The module-level cache avoids repeated globalThis lookups on hot paths.
+ * After closeAll() sets _cached to null, the next call creates a fresh Registry.
  */
 function getRegistry(): Registry {
+  if (_cached) return _cached;
   const g = globalThis as unknown as { __rateSyncRegistry?: Registry };
-  return (g.__rateSyncRegistry ??= new Registry());
+  _cached = (g.__rateSyncRegistry ??= new Registry());
+  return _cached;
 }
 
 // ---------------------------------------------------------------------------

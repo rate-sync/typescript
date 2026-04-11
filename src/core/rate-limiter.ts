@@ -52,6 +52,7 @@ export class RateLimiter {
 
   private _initialized = false;
   private _metrics: RateLimiterMetrics;
+  private readonly _acquireConfig: AcquireConfig;
 
   constructor(options: RateLimiterOptions) {
     this._id = options.id;
@@ -65,6 +66,7 @@ export class RateLimiter {
     this._timeout = options.timeout ?? null;
     this._failClosed = options.failClosed ?? false;
     this._metrics = createMetrics();
+    this._acquireConfig = this._buildAcquireConfig();
   }
 
   // ---- Lifecycle ------------------------------------------------------------
@@ -119,7 +121,7 @@ export class RateLimiter {
    */
   async acquire(): Promise<void> {
     this._ensureInitialized();
-    const config = this._buildAcquireConfig();
+    const config = this._acquireConfig;
     const startMs = Date.now();
 
     // eslint-disable-next-line no-constant-condition
@@ -140,7 +142,7 @@ export class RateLimiter {
    */
   async tryAcquire(timeout?: number): Promise<boolean> {
     this._ensureInitialized();
-    const config = this._buildAcquireConfig();
+    const config = this._acquireConfig;
     const effectiveTimeout = timeout ?? this._timeout;
     const deadline = effectiveTimeout !== null ? Date.now() + effectiveTimeout : null;
 
@@ -206,7 +208,7 @@ export class RateLimiter {
   async checkLimit(identifier?: string): Promise<RateLimitResult> {
     this._ensureInitialized();
     const key = identifier ? `${this._id}:${identifier}` : this._id;
-    const config = this._buildAcquireConfig();
+    const config = this._acquireConfig;
 
     const result = await this._store.acquire(key, config);
 
@@ -287,8 +289,7 @@ export class RateLimiter {
   async getState(identifier?: string): Promise<LimiterState> {
     this._ensureInitialized();
     const key = identifier ? `${this._id}:${identifier}` : this._id;
-    const config = this._buildAcquireConfig();
-    return this._store.getState(key, config);
+    return this._store.getState(key, this._acquireConfig);
   }
 
   /**
