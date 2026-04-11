@@ -12,13 +12,13 @@ import { defineConfig } from 'rate-sync';
 
 export default defineConfig({
   stores: {
-    'auth-store': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+    'security-cache': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
     // Layer 1: IP-based (stops scanning)
-    auth_ip: { store: 'auth-store', algorithm: 'sliding-window', limit: 30, windowSeconds: 60 },
+    auth_ip: { store: 'security-cache', algorithm: 'sliding-window', limit: 30, windowSeconds: 60 },
     // Layer 2: Credential-based (stops brute force)
-    auth_credential: { store: 'auth-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+    auth_credential: { store: 'security-cache', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
   },
 });
 ```
@@ -96,8 +96,8 @@ export const loginAction = withRateLimitAction(
 
 ```typescript
 // In your defineConfig limiters:
-reset_ip: { store: 'auth-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 600 },
-reset_email: { store: 'auth-store', algorithm: 'sliding-window', limit: 3, windowSeconds: 3600 },
+reset_ip: { store: 'security-cache', algorithm: 'sliding-window', limit: 5, windowSeconds: 600 },
+reset_email: { store: 'security-cache', algorithm: 'sliding-window', limit: 3, windowSeconds: 3600 },
 ```
 
 ```typescript
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
 
 ```typescript
 // In your defineConfig limiters:
-register_ip: { store: 'auth-store', algorithm: 'sliding-window', limit: 3, windowSeconds: 3600 },
+register_ip: { store: 'security-cache', algorithm: 'sliding-window', limit: 3, windowSeconds: 3600 },
 ```
 
 ```typescript

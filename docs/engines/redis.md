@@ -103,7 +103,7 @@ configureLimiter('login', {
 ### Production Configuration
 
 ```typescript
-await configureStore('redis_prod', {
+await configureStore('redis-prod', {
   engine: 'redis',
   url: `rediss://:${process.env.REDIS_PASSWORD}@redis.internal:6380`,
   socketTimeout: 10000,
@@ -114,7 +114,7 @@ await configureStore('redis_prod', {
 ```typescript
 import { configureStore, configureLimiter, initializeAllLimiters } from 'rate-sync';
 
-await configureStore('redis_prod', {
+await configureStore('redis-prod', {
   engine: 'redis',
   url: 'redis://localhost:6379',
   keyPrefix: 'myapp',
@@ -122,7 +122,7 @@ await configureStore('redis_prod', {
 });
 
 configureLimiter('api', {
-  store: 'redis_prod',
+  store: 'redis-prod',
   ratePerSecond: 100,
   maxConcurrent: 50,
 });
