@@ -185,6 +185,39 @@ describe('withRateLimitAction', () => {
     expect(result).toEqual({ done: true });
   });
 
+  it('failOpen=true calls action when keyExtractor throws', async () => {
+    await setup('action-lim-7', 10);
+
+    const action = vi.fn().mockResolvedValue({ ok: true });
+    const throwingExtractor = vi.fn(() => { throw new Error('extractor boom'); });
+
+    const wrapped = withRateLimitAction(action, {
+      limiterId: 'action-lim-7',
+      keyExtractor: throwingExtractor,
+      failOpen: true,
+    });
+
+    const result = await wrapped();
+    expect(result).toEqual({ ok: true });
+    expect(action).toHaveBeenCalledOnce();
+  });
+
+  it('failOpen=false propagates keyExtractor error', async () => {
+    await setup('action-lim-8', 10);
+
+    const action = vi.fn().mockResolvedValue({ ok: true });
+    const throwingExtractor = vi.fn(() => { throw new Error('extractor boom'); });
+
+    const wrapped = withRateLimitAction(action, {
+      limiterId: 'action-lim-8',
+      keyExtractor: throwingExtractor,
+      failOpen: false,
+    });
+
+    await expect(wrapped()).rejects.toThrow('extractor boom');
+    expect(action).not.toHaveBeenCalled();
+  });
+
   it('action errors propagate normally (not swallowed by failOpen)', async () => {
     await setup('action-lim-6', 10);
 

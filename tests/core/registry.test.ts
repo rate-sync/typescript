@@ -13,7 +13,7 @@ import {
   checkMultiLimiters,
   closeAll,
 } from '../../src/core/registry.js';
-import { StoreNotFoundError, LimiterNotFoundError, RateLimiterAlreadyConfiguredError } from '../../src/core/errors.js';
+import { StoreNotFoundError, LimiterNotFoundError, RateLimiterAlreadyConfiguredError, RateLimiterNotInitializedError } from '../../src/core/errors.js';
 
 // Reset the registry between each test by closing all state
 beforeEach(async () => {
@@ -217,6 +217,12 @@ describe('checkLimiter', () => {
 
   it('throws LimiterNotFoundError for unknown limiter', async () => {
     await expect(checkLimiter('ghost')).rejects.toThrow(LimiterNotFoundError);
+  });
+
+  it('throws RateLimiterNotInitializedError when limiter is not initialized', async () => {
+    await configureStore('mem', { engine: 'memory' });
+    configureLimiter('uninit', { store: 'mem', algorithm: 'sliding-window', limit: 5, windowSeconds: 60 });
+    await expect(checkLimiter('uninit')).rejects.toThrow();
   });
 });
 

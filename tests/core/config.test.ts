@@ -58,6 +58,12 @@ describe('setupRateSyncFromConfig', () => {
     expect(limiter.isInitialized).toBe(true);
   });
 
+  it('resolves without error when stores and limiters are empty', async () => {
+    await expect(setupRateSyncFromConfig({ stores: {}, limiters: {} })).resolves.toBeUndefined();
+    expect(listStores()).toHaveLength(0);
+    expect(listLimiters()).toHaveLength(0);
+  });
+
   it('works with multiple stores and limiters', async () => {
     await setupRateSyncFromConfig({
       stores: {
