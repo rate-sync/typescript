@@ -3,6 +3,11 @@ import { TOKEN_BUCKET_SCRIPT, SLIDING_WINDOW_SCRIPT, RELEASE_SCRIPT } from './sc
 import type { RateLimitStore, AcquireConfig, AcquireResult } from '../base.js';
 import type { LimiterState } from '../../core/schemas.js';
 
+/**
+ * Connection options for RedisStore.
+ *
+ * Passed to the constructor to configure the underlying node-redis client.
+ */
 export interface RedisStoreOptions {
   url: string;
   db?: number;
@@ -13,6 +18,28 @@ export interface RedisStoreOptions {
   socketTimeout?: number;
 }
 
+/**
+ * Redis-backed rate limiting store for distributed deployments.
+ *
+ * Uses atomic Lua scripts for token bucket and sliding window algorithms,
+ * ensuring correctness under concurrent access from multiple processes
+ * or containers. Requires node-redis v4+ as a peer dependency and
+ * Redis 5.0+ for Lua script support.
+ *
+ * Call initialize() before first use and close() on shutdown to release
+ * the Redis connection.
+ *
+ * @example
+ * ```typescript
+ * const store = new RedisStore({ url: 'redis://localhost:6379' });
+ * await store.initialize();
+ * const result = await store.acquire('user:123', {
+ *   algorithm: 'sliding-window',
+ *   limit: 100,
+ *   windowSeconds: 60,
+ * });
+ * ```
+ */
 export class RedisStore implements RateLimitStore {
   private client: RedisClientType | null = null;
   private readonly url: string;

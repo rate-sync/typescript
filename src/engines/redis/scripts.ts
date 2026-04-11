@@ -1,3 +1,25 @@
+/**
+ * Atomic Lua script implementing the token bucket algorithm.
+ *
+ * Handles both rate limiting and optional concurrency limiting in a single
+ * round-trip. Returns exact wait time so the client can sleep precisely
+ * instead of polling, reducing Redis round-trips.
+ *
+ * KEYS:
+ * - KEYS[1]: rate key (stores last allowed timestamp)
+ * - KEYS[2]: concurrent key (stores current concurrency counter)
+ *
+ * ARGV:
+ * - ARGV[1]: now (current time as float seconds)
+ * - ARGV[2]: interval (minimum seconds between requests; 0 disables rate check)
+ * - ARGV[3]: max_concurrent (concurrency limit; 0 disables concurrency check)
+ * - ARGV[4]: ttl (key expiry in seconds)
+ *
+ * Returns: `[success, waitMs, concurrentCount]`
+ * - success: 1 if allowed, 0 if denied
+ * - waitMs: milliseconds to wait before retrying (rate limited); -1 for concurrency limited
+ * - concurrentCount: current concurrent count after acquisition (-1 if not tracked)
+ */
 export const TOKEN_BUCKET_SCRIPT = `
 local rate_key = KEYS[1]
 local concurrent_key = KEYS[2]
@@ -38,6 +60,30 @@ end
 return {1, 0, current_concurrent}
 `;
 
+/**
+ * Atomic Lua script implementing the sliding window algorithm.
+ *
+ * Prunes expired entries from the sorted set, checks the request count against
+ * the limit, and optionally enforces a concurrency cap — all in one round-trip.
+ * Uses a unique composite member ID to avoid score collisions.
+ *
+ * KEYS:
+ * - KEYS[1]: window key (sorted set of request timestamps)
+ * - KEYS[2]: concurrent key (stores current concurrency counter)
+ *
+ * ARGV:
+ * - ARGV[1]: now (current time as float seconds)
+ * - ARGV[2]: limit (maximum requests allowed in the window)
+ * - ARGV[3]: window_seconds (size of the sliding window)
+ * - ARGV[4]: max_concurrent (concurrency limit; 0 disables concurrency check)
+ * - ARGV[5]: ttl (key expiry in seconds)
+ *
+ * Returns: `[success, waitMs, concurrentCount, currentCount]`
+ * - success: 1 if allowed, 0 if denied
+ * - waitMs: milliseconds until the oldest entry expires (window limited); -1 for concurrency limited
+ * - concurrentCount: current concurrent count after acquisition (-1 if not tracked)
+ * - currentCount: number of requests in the window after this call
+ */
 export const SLIDING_WINDOW_SCRIPT = `
 local window_key = KEYS[1]
 local concurrent_key = KEYS[2]
@@ -84,6 +130,17 @@ end
 return {1, 0, current_concurrent, current_count + 1}
 `;
 
+/**
+ * Atomic Lua script that decrements the concurrency counter.
+ *
+ * Guards against the counter going below zero — a no-op if the key
+ * does not exist or is already at zero.
+ *
+ * KEYS:
+ * - KEYS[1]: concurrent key (stores current concurrency counter)
+ *
+ * Returns: new counter value after decrement, or 0 if already at zero
+ */
 export const RELEASE_SCRIPT = `
 local concurrent_key = KEYS[1]
 local current = tonumber(redis.call('GET', concurrent_key) or '0')

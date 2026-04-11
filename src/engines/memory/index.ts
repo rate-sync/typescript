@@ -19,6 +19,24 @@ type KeyState = TokenBucketState | SlidingWindowState;
 // MemoryStore
 // ---------------------------------------------------------------------------
 
+/**
+ * In-memory rate limiting store for single-process applications.
+ *
+ * Supports token bucket and sliding window algorithms with on-demand
+ * cleanup of expired entries. State is held entirely in process memory,
+ * so it is not suitable for distributed deployments — use RedisStore
+ * instead when running multiple processes or containers.
+ *
+ * @example
+ * ```typescript
+ * const store = new MemoryStore();
+ * await store.initialize();
+ * const result = await store.acquire('user:123', {
+ *   algorithm: 'token-bucket',
+ *   ratePerSecond: 10,
+ * });
+ * ```
+ */
 export class MemoryStore implements RateLimitStore {
   private tokenBuckets = new Map<string, TokenBucketState>();
   private slidingWindows = new Map<string, SlidingWindowState>();

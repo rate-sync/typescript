@@ -1,5 +1,11 @@
 import type { RateLimitResult } from './schemas.js';
 
+/**
+ * Base error for all rate-sync errors.
+ *
+ * All error classes in this library extend this base, allowing callers
+ * to catch any library error with a single `instanceof RateLimiterError` check.
+ */
 export class RateLimiterError extends Error {
   constructor(msg: string) {
     super(msg);
@@ -9,12 +15,20 @@ export class RateLimiterError extends Error {
   }
 }
 
+/**
+ * Thrown when a rate limiter is referenced but has not been configured.
+ *
+ * Call configure() or load_config() with the limiter's name before using it.
+ */
 export class RateLimiterNotConfiguredError extends RateLimiterError {
   constructor(public readonly limiterName: string) {
     super(`Rate limiter "${limiterName}" is not configured`);
   }
 }
 
+/**
+ * Thrown when a rate limiter is used before initialize() has been called.
+ */
 export class RateLimiterNotInitializedError extends RateLimiterError {
   constructor(public readonly limiterName?: string) {
     super(
@@ -25,6 +39,12 @@ export class RateLimiterNotInitializedError extends RateLimiterError {
   }
 }
 
+/**
+ * Thrown when the rate limiter fails to acquire a slot.
+ *
+ * Carries optional context about which group was attempting the acquisition
+ * and how many attempts were made before giving up.
+ */
 export class RateLimiterAcquisitionError extends RateLimiterError {
   constructor(
     msg: string,
@@ -35,12 +55,23 @@ export class RateLimiterAcquisitionError extends RateLimiterError {
   }
 }
 
+/**
+ * Thrown when attempting to configure a rate limiter that is already configured.
+ *
+ * Remove the existing configuration before reconfiguring.
+ */
 export class RateLimiterAlreadyConfiguredError extends RateLimiterError {
   constructor(public readonly limiterName: string) {
     super(`Rate limiter "${limiterName}" is already configured`);
   }
 }
 
+/**
+ * Thrown when configuration validation fails.
+ *
+ * Provides structured context about which field failed validation,
+ * what was expected, and what was actually received.
+ */
 export class ConfigValidationError extends RateLimiterError {
   constructor(
     msg: string,
@@ -52,18 +83,30 @@ export class ConfigValidationError extends RateLimiterError {
   }
 }
 
+/**
+ * Thrown when a store ID is referenced but no matching store has been registered.
+ */
 export class StoreNotFoundError extends RateLimiterError {
   constructor(public readonly storeId: string) {
     super(`Store "${storeId}" not found`);
   }
 }
 
+/**
+ * Thrown when a limiter ID is referenced but no matching limiter has been registered.
+ */
 export class LimiterNotFoundError extends RateLimiterError {
   constructor(public readonly limiterId: string) {
     super(`Limiter "${limiterId}" not found`);
   }
 }
 
+/**
+ * Thrown when a rate limit is exceeded.
+ *
+ * Contains all information needed to construct a 429 Too Many Requests
+ * response, including the retry window and the limiter that triggered the error.
+ */
 export class RateLimitExceededError extends RateLimiterError {
   constructor(
     public readonly identifier: string,
@@ -78,6 +121,14 @@ export class RateLimitExceededError extends RateLimiterError {
     );
   }
 
+  /**
+   * Convert this error to a RateLimitResult with allowed set to false.
+   *
+   * Useful for middleware that needs to return a structured result even when
+   * a rate limit error was thrown rather than returned.
+   *
+   * @returns RateLimitResult representing the blocked request
+   */
   toResult(): RateLimitResult {
     return {
       allowed: false,
