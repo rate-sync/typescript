@@ -1,8 +1,23 @@
 {
   "name": "rate-sync",
   "version": "0.1.0",
+  "description": "Distributed rate limiting for TypeScript — token bucket, sliding window, Redis/Memory backends with Next.js integration",
   "type": "module",
   "license": "MIT",
+  "author": "Rate-Sync Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rate-sync/typescript.git"
+  },
+  "homepage": "https://github.com/rate-sync/typescript#readme",
+  "keywords": [
+    "rate-limiting",
+    "distributed-systems",
+    "rate-limiter",
+    "nextjs",
+    "redis",
+    "typescript"
+  ],
   "engines": {
     "node": ">=18.0.0"
   },
