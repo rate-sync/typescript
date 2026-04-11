@@ -28,7 +28,7 @@ export default defineConfig({
   },
   // Limiters define WHAT to rate limit
   limiters: {
-    api: { store: 'local', ratePerSecond: 10 },
+    'public-api': { store: 'local', ratePerSecond: 10 },
   },
 });
 ```
@@ -51,15 +51,15 @@ import { defineConfig } from 'rate-sync';
 
 export default defineConfig({
   stores: {
-    'prod-cache': {
+    'primary-store': {
       engine: 'redis',
       url: process.env.REDIS_URL ?? 'redis://localhost:6379',
       keyPrefix: 'myapp:ratelimit',
     },
   },
   limiters: {
-    api: { store: 'prod-cache', ratePerSecond: 1000, maxConcurrent: 200, timeout: 30000 },
-    login: { store: 'prod-cache', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+    'public-api': { store: 'primary-store', ratePerSecond: 1000, maxConcurrent: 200, timeout: 30000 },
+    login: { store: 'primary-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
   },
 });
 ```
@@ -72,7 +72,7 @@ export default defineConfig({
 import { configureStore, configureLimiter, initializeAllLimiters } from 'rate-sync';
 
 await configureStore('local', { engine: 'memory' });
-configureLimiter('api', { store: 'local', ratePerSecond: 10 });
+configureLimiter('public-api', { store: 'local', ratePerSecond: 10 });
 await initializeAllLimiters();
 ```
 
@@ -133,7 +133,7 @@ await configureStore('prod', {
 At least one of `ratePerSecond` or `maxConcurrent` required.
 
 ```typescript
-configureLimiter('api', {
+configureLimiter('public-api', {
   store: 'prod',
   ratePerSecond: 100,
   maxConcurrent: 50,
@@ -168,7 +168,7 @@ configureLimiter('login', {
 ```typescript
 export default defineConfig({
   stores: { dev: { engine: 'memory' } },
-  limiters: { api: { store: 'dev', ratePerSecond: 100 } },
+  limiters: { 'public-api': { store: 'dev', ratePerSecond: 100 } },
 });
 ```
 
@@ -177,12 +177,12 @@ export default defineConfig({
 ```typescript
 export default defineConfig({
   stores: {
-    'prod-cache': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+    'primary-store': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
-    api: { store: 'prod-cache', ratePerSecond: 1000, maxConcurrent: 200, timeout: 30000 },
-    partner_api: { store: 'prod-cache', ratePerSecond: 10, timeout: 60000, failClosed: true },
-    login: { store: 'prod-cache', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+    'public-api': { store: 'primary-store', ratePerSecond: 1000, maxConcurrent: 200, timeout: 30000 },
+    partner_api: { store: 'primary-store', ratePerSecond: 10, timeout: 60000, failClosed: true },
+    login: { store: 'primary-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
   },
 });
 ```
@@ -202,13 +202,10 @@ export default defineConfig({
 ```
 
 ```typescript
-import { getOrCloneLimiter, getLimiter, acquire } from 'rate-sync';
+import { getOrCloneLimiter } from 'rate-sync';
 
 // Get or create a per-tenant limiter cloned from 'tenant_base'
-getOrCloneLimiter('tenant_base', `tenant:${tenantId}`);
-
-// Use it
-const limiter = getLimiter(`tenant:${tenantId}`);
+const limiter = getOrCloneLimiter('tenant_base', `tenant:${tenantId}`);
 await limiter.initialize();
 const result = await limiter.checkLimit(tenantId);
 ```
@@ -226,7 +223,7 @@ export default defineConfig({
       : { engine: 'memory' },
   },
   limiters: {
-    api: {
+    'public-api': {
       store: 'main',
       ratePerSecond: Number(process.env.API_RATE_LIMIT ?? 10),
     },

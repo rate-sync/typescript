@@ -17,11 +17,11 @@ import { defineConfig, setupRateSyncFromConfig, acquire } from 'rate-sync';
 
 const config = defineConfig({
   stores: { local: { engine: 'memory' } },
-  limiters: { api: { store: 'local', ratePerSecond: 10 } },
+  limiters: { 'public-api': { store: 'local', ratePerSecond: 10 } },
 });
 
 await setupRateSyncFromConfig(config);
-await acquire('api');
+await acquire('public-api');
 ```
 
 ## Configuration
@@ -40,7 +40,7 @@ No additional configuration options. The Memory engine stores state in process m
 import { configureStore, configureLimiter, initializeAllLimiters } from 'rate-sync';
 
 await configureStore('local', { engine: 'memory' });
-configureLimiter('api', { store: 'local', ratePerSecond: 10 });
+configureLimiter('public-api', { store: 'local', ratePerSecond: 10 });
 await initializeAllLimiters();
 ```
 
@@ -50,7 +50,7 @@ await initializeAllLimiters();
 export default defineConfig({
   stores: { dev: { engine: 'memory' } },
   limiters: {
-    api: { store: 'dev', ratePerSecond: 100 },
+    'public-api': { store: 'dev', ratePerSecond: 100 },
     auth: { store: 'dev', algorithm: 'sliding-window', limit: 100, windowSeconds: 60 },
   },
 });
@@ -61,7 +61,7 @@ export default defineConfig({
 Controls throughput — allows one request every `1 / ratePerSecond` seconds:
 
 ```typescript
-configureLimiter('api', {
+configureLimiter('public-api', {
   store: 'local',
   ratePerSecond: 10, // 10 req/sec — 1 request every 100ms
 });
@@ -92,7 +92,7 @@ stores: { dev: { engine: 'memory' } }
 stores: { prod: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' } }
 
 // Limiters stay the same — just update the store reference:
-limiters: { api: { store: 'prod', ratePerSecond: 10 } }
+limiters: { 'public-api': { store: 'prod', ratePerSecond: 10 } }
 ```
 
 ## Troubleshooting

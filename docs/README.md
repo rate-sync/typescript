@@ -46,7 +46,7 @@ export default defineConfig({
     main: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
-    api: { store: 'main', ratePerSecond: 100, maxConcurrent: 50, timeout: 30000 },
+    'public-api': { store: 'main', ratePerSecond: 100, maxConcurrent: 50, timeout: 30000 },
   },
 });
 ```
@@ -61,7 +61,7 @@ import { setupRateSyncFromConfig, acquire } from 'rate-sync';
 await setupRateSyncFromConfig(config);
 
 // Acquire a slot (blocks until available)
-await acquire('api');
+await acquire('public-api');
 ```
 
 ## Architecture
@@ -90,25 +90,25 @@ Application Instances          Coordination Store
 ### Rate Limiting (Throughput)
 
 ```typescript
-configureLimiter('external_api', { store: 'prod-cache', ratePerSecond: 10 });
+configureLimiter('external_api', { store: 'primary-store', ratePerSecond: 10 });
 ```
 
 ### Concurrency Limiting (Parallelism)
 
 ```typescript
-configureLimiter('db_pool', { store: 'prod-cache', maxConcurrent: 20 });
+configureLimiter('db_pool', { store: 'primary-store', maxConcurrent: 20 });
 ```
 
 ### Combined (Production)
 
 ```typescript
-configureLimiter('production', { store: 'prod-cache', ratePerSecond: 100, maxConcurrent: 50, timeout: 30000 });
+configureLimiter('production', { store: 'primary-store', ratePerSecond: 100, maxConcurrent: 50, timeout: 30000 });
 ```
 
 ### Auth Protection (Sliding Window)
 
 ```typescript
-configureLimiter('login', { store: 'prod-cache', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 });
+configureLimiter('login', { store: 'primary-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 });
 ```
 
 ## Support

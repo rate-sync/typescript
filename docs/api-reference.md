@@ -198,7 +198,7 @@ function getOrCloneLimiter(baseId: string, newId: string): RateLimiter
 import { getOrCloneLimiter } from 'rate-sync';
 
 // Per-user rate limiting — cloned once, reused on subsequent requests
-const limiter = getOrCloneLimiter('api', `api:${userId}`);
+const limiter = getOrCloneLimiter('public-api', `public-api:${userId}`);
 await limiter.initialize();
 const result = await limiter.checkLimit(userId);
 ```
@@ -291,7 +291,7 @@ async function acquire(limiterId: string): Promise<void>
 import { acquire } from 'rate-sync';
 
 // Blocks until a slot is available
-await acquire('api');
+await acquire('public-api');
 await callExternalApi();
 ```
 
@@ -749,7 +749,7 @@ export const GET = withRateLimit(
     return Response.json({ data: 'value' });
   },
   {
-    limiterId: 'api',
+    limiterId: 'data-api',
     keyExtractor: (req) => getClientIp(req),
   },
 );

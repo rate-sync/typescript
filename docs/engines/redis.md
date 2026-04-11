@@ -27,10 +27,10 @@ import { defineConfig, setupRateSyncFromConfig, checkLimiter } from 'rate-sync';
 
 const config = defineConfig({
   stores: {
-    'prod-cache': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+    'api-cache': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
-    api: { store: 'prod-cache', ratePerSecond: 100 },
+    api: { store: 'api-cache', ratePerSecond: 100 },
   },
 });
 
@@ -81,7 +81,7 @@ Controls throughput — allows at most `ratePerSecond` requests per second. Opti
 
 ```typescript
 configureLimiter('api', {
-  store: 'prod-cache',
+  store: 'api-cache',
   ratePerSecond: 100,
   maxConcurrent: 50,
 });
@@ -93,7 +93,7 @@ Counts requests in a rolling time window. Ideal for auth protection or abuse pre
 
 ```typescript
 configureLimiter('login', {
-  store: 'prod-cache',
+  store: 'api-cache',
   algorithm: 'sliding-window',
   limit: 5,
   windowSeconds: 300,
@@ -114,7 +114,7 @@ await configureStore('redis_prod', {
 ```typescript
 import { configureStore, configureLimiter, initializeAllLimiters } from 'rate-sync';
 
-await configureStore('prod-cache', {
+await configureStore('redis_prod', {
   engine: 'redis',
   url: 'redis://localhost:6379',
   keyPrefix: 'myapp',
@@ -122,7 +122,7 @@ await configureStore('prod-cache', {
 });
 
 configureLimiter('api', {
-  store: 'prod-cache',
+  store: 'redis_prod',
   ratePerSecond: 100,
   maxConcurrent: 50,
 });

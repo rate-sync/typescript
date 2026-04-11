@@ -17,7 +17,7 @@ Attackers try thousands of password combinations. A sliding window limiter on yo
 
 ```typescript
 configureLimiter('auth_credential', {
-  store: 'prod-cache',
+  store: 'auth-store',
   algorithm: 'sliding-window',
   limit: 5,          // 5 attempts
   windowSeconds: 300, // per 5 minutes
@@ -91,10 +91,10 @@ In-memory counters reset when a process restarts and can't coordinate across ins
 ```typescript
 export default defineConfig({
   stores: {
-    'main-store': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+    'fleet-cache': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
-    api: { store: 'main-store', ratePerSecond: 100 }, // all instances share this
+    'global-api': { store: 'fleet-cache', ratePerSecond: 100 }, // all instances share this
   },
 });
 ```
@@ -137,7 +137,7 @@ export default defineConfig({
     main: { engine: 'memory' }, // or "redis"
   },
   limiters: {
-    api: { store: 'main', ratePerSecond: 10 },
+    'public-api': { store: 'main', ratePerSecond: 10 }, // public search API — 10 req/sec per client
   },
 });
 ```
@@ -167,7 +167,7 @@ export const GET = withRateLimit(
     return Response.json({ results: [] });
   },
   {
-    limiterId: 'api',
+    limiterId: 'search-throttle',
     keyExtractor: (req) => getClientIp(req),
   },
 );
@@ -187,7 +187,7 @@ export const submitForm = withRateLimitAction(
     return { success: true };
   },
   {
-    limiterId: 'api',
+    limiterId: 'form-submit',
     keyExtractor: async () => {
       const h = await headers();
       return h.get('x-forwarded-for') ?? '127.0.0.1';
@@ -210,10 +210,10 @@ For dynamic or runtime configuration, use the registry functions directly:
 import { configureStore, configureLimiter, initializeAllLimiters, acquire } from 'rate-sync';
 
 await configureStore('main', { engine: 'redis', url: 'redis://localhost:6379/0' });
-configureLimiter('api', { store: 'main', ratePerSecond: 100 });
+configureLimiter('public-api', { store: 'main', ratePerSecond: 100 });
 await initializeAllLimiters();
 
-await acquire('api');
+await acquire('public-api');
 ```
 
 ### Per-User / Per-Tenant Limits
@@ -222,7 +222,7 @@ await acquire('api');
 import { getOrCloneLimiter } from 'rate-sync';
 
 // Clone the base limiter config for each tenant
-const limiter = getOrCloneLimiter('api', `tenant:${tenantId}`);
+const limiter = getOrCloneLimiter('public-api', `tenant:${tenantId}`);
 await limiter.initialize();
 
 const result = await limiter.checkLimit(userId);
@@ -255,7 +255,7 @@ No dependencies required. State is lost on restart and not shared across process
 ### Redis (production / distributed)
 
 ```typescript
-await configureStore('prod-cache', {
+await configureStore('app-cache', {
   engine: 'redis',
   url: process.env.REDIS_URL ?? 'redis://localhost:6379',
   keyPrefix: 'myapp:',    // optional namespace
@@ -277,7 +277,7 @@ Controls request throughput with optional concurrency limits. Best for API rate 
 
 ```typescript
 configureLimiter('external_api', {
-  store: 'prod-cache',
+  store: 'worker-cache',
   ratePerSecond: 100, // max 100 req/sec
   maxConcurrent: 10,  // max 10 in-flight requests
   timeout: 30000,     // wait up to 30s (ms)
@@ -290,7 +290,7 @@ Counts requests in a fixed time window. Best for login protection and quota enfo
 
 ```typescript
 configureLimiter('login', {
-  store: 'prod-cache',
+  store: 'auth-cache',
   algorithm: 'sliding-window',
   limit: 5,           // max 5 attempts
   windowSeconds: 300, // per 5 minutes
@@ -319,7 +319,7 @@ Wraps a Next.js App Router handler. Returns `429` automatically when the limit i
 
 ```typescript
 export const POST = withRateLimit(handler, {
-  limiterId: 'api',                          // single or array of limiter IDs
+  limiterId: 'public-api',                   // single or array of limiter IDs
   keyExtractor: (req) => getClientIp(req),   // required: produces the rate-limit key
   failOpen: true,                            // default: pass through on store errors
   onLimitExceeded: (req, result) =>          // optional: custom 429 response
@@ -355,11 +355,11 @@ import { defineConfig } from 'rate-sync';
 export default defineConfig({
   stores: {
     'dev-local': { engine: 'memory' },
-    'prod-cache': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379/0' },
+    'primary-store': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379/0' },
   },
   limiters: {
-    api: { store: 'prod-cache', ratePerSecond: 100, maxConcurrent: 10, timeout: 30000 },
-    login: { store: 'prod-cache', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+    'public-api': { store: 'primary-store', ratePerSecond: 100, maxConcurrent: 10, timeout: 30000 },
+    login: { store: 'primary-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
   },
 });
 ```

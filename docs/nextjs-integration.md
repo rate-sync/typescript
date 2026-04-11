@@ -27,7 +27,7 @@ export default defineConfig({
     },
   },
   limiters: {
-    api: { store: 'main-store', ratePerSecond: 100, maxConcurrent: 50 },
+    'data-api': { store: 'main-store', ratePerSecond: 100, maxConcurrent: 50 },
     auth: { store: 'main-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
   },
 });
@@ -63,7 +63,7 @@ export const GET = withRateLimit(
     return Response.json({ data: 'value' });
   },
   {
-    limiterId: 'api',
+    limiterId: 'data-api',
     keyExtractor: (req) => getClientIp(req),
   },
 );
@@ -85,7 +85,7 @@ export const POST = withRateLimit(
     return Response.json({ ok: true });
   },
   {
-    limiterId: 'api',
+    limiterId: 'data-api',
     keyExtractor: async (req) => {
       const session = await getServerSession();
       return session?.user?.id ?? getClientIp(req);
@@ -113,7 +113,7 @@ export const POST = withRateLimit(handler, {
 
 ```typescript
 export const POST = withRateLimit(handler, {
-  limiterId: 'api',
+  limiterId: 'data-api',
   keyExtractor: (req) => getClientIp(req),
   onLimitExceeded: (req, result) => {
     return Response.json(
@@ -130,7 +130,7 @@ By default, if the rate limit store is unreachable, requests pass through (`fail
 
 ```typescript
 export const POST = withRateLimit(handler, {
-  limiterId: 'api',
+  limiterId: 'data-api',
   keyExtractor: (req) => getClientIp(req),
   failOpen: false,   // throw on store errors
   onError: (req, err) => {
