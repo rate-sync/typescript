@@ -138,6 +138,19 @@ export function createRateLimitResult(input: {
 }
 
 export function createMultiLimiterResult(results: RateLimitResult[]): MultiLimiterResult {
+  if (results.length === 0) {
+    return {
+      allowed: true,
+      limit: 0,
+      remaining: 0,
+      resetIn: 0,
+      blockingLimiterId: undefined,
+      results: [],
+      resetAt: Math.floor(Date.now() / 1000),
+      retryAfter: 0,
+    };
+  }
+
   const allowed = results.every((r) => r.allowed);
 
   // Find most restrictive: the result with lowest remaining

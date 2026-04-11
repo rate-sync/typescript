@@ -40,6 +40,14 @@ class Registry {
     this.stores.set(storeId, store);
   }
 
+  getStore(storeId: string): RateLimitStore {
+    const store = this.stores.get(storeId);
+    if (!store) {
+      throw new StoreNotFoundError(storeId);
+    }
+    return store;
+  }
+
   listStores(): string[] {
     return Array.from(this.stores.keys());
   }
@@ -192,6 +200,10 @@ export function cloneLimiter(baseId: string, newId: string): void {
 
 export function getOrCloneLimiter(baseId: string, newId: string): RateLimiter {
   return getRegistry().getOrCloneLimiter(baseId, newId);
+}
+
+export function getStore(storeId: string): RateLimitStore {
+  return getRegistry().getStore(storeId);
 }
 
 export function listStores(): string[] {

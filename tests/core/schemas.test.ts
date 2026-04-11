@@ -98,6 +98,19 @@ describe('createMultiLimiterResult', () => {
     vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'));
   });
 
+  it('should not crash and return allowed:true when called with empty array', () => {
+    expect(() => createMultiLimiterResult([])).not.toThrow();
+    const multi = createMultiLimiterResult([]);
+    expect(multi.allowed).toBe(true);
+    expect(multi.limit).toBe(0);
+    expect(multi.remaining).toBe(0);
+    expect(multi.resetIn).toBe(0);
+    expect(multi.blockingLimiterId).toBeUndefined();
+    expect(multi.results).toHaveLength(0);
+    expect(multi.retryAfter).toBe(0);
+    expect(multi.resetAt).toBe(Math.floor(Date.now() / 1000));
+  });
+
   it('should be allowed when all results are allowed', () => {
     const r1 = createRateLimitResult({ allowed: true, limit: 100, remaining: 80, resetIn: 10 });
     const r2 = createRateLimitResult({ allowed: true, limit: 50, remaining: 40, resetIn: 5 });
