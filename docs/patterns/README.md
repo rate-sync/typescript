@@ -36,7 +36,7 @@ export default defineConfig({
     'main-store': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
-    api: { store: 'main-store', algorithm: 'token-bucket', ratePerSecond: 100 },
+    'public-api': { store: 'main-store', algorithm: 'token-bucket', ratePerSecond: 100 },
   },
 });
 ```
@@ -49,7 +49,7 @@ import config from './rate-sync.config';
 await setupRateSyncFromConfig(config);
 
 // In your handler:
-const result = await checkLimiter('api', getClientIp(req));
+const result = await checkLimiter('public-api', getClientIp(req));
 if (!result.allowed) {
   return new Response('Too Many Requests', { status: 429 });
 }

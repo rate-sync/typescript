@@ -71,27 +71,27 @@ describe('configureStore', () => {
 describe('configureLimiter', () => {
   it('adds limiter to listLimiters()', async () => {
     await configureStore('test-store', { engine: 'memory' });
-    configureLimiter('api', { store: 'test-store', algorithm: 'token-bucket', ratePerSecond: 10 });
-    expect(listLimiters()).toContain('api');
+    configureLimiter('test-limiter', { store: 'test-store', algorithm: 'token-bucket', ratePerSecond: 10 });
+    expect(listLimiters()).toContain('test-limiter');
   });
 
   it('throws StoreNotFoundError when store does not exist', () => {
     expect(() =>
-      configureLimiter('api', { store: 'nonexistent', algorithm: 'token-bucket' }),
+      configureLimiter('test-limiter', { store: 'nonexistent', algorithm: 'token-bucket' }),
     ).toThrow(StoreNotFoundError);
   });
 
   it('thrown StoreNotFoundError has correct storeId', () => {
     expect(() =>
-      configureLimiter('api', { store: 'ghost' }),
+      configureLimiter('test-limiter', { store: 'ghost' }),
     ).toThrow(expect.objectContaining({ storeId: 'ghost' }));
   });
 
   it('throws RateLimiterAlreadyConfiguredError when limiter id is reused', async () => {
     await configureStore('test-store', { engine: 'memory' });
-    configureLimiter('api', { store: 'test-store', algorithm: 'token-bucket', ratePerSecond: 10 });
+    configureLimiter('test-limiter', { store: 'test-store', algorithm: 'token-bucket', ratePerSecond: 10 });
     expect(() =>
-      configureLimiter('api', { store: 'test-store', algorithm: 'token-bucket', ratePerSecond: 5 }),
+      configureLimiter('test-limiter', { store: 'test-store', algorithm: 'token-bucket', ratePerSecond: 5 }),
     ).toThrow(RateLimiterAlreadyConfiguredError);
   });
 

@@ -30,13 +30,13 @@ const config = defineConfig({
     'api-cache': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
-    api: { store: 'api-cache', ratePerSecond: 100 },
+    'public-api': { store: 'api-cache', ratePerSecond: 100 },
   },
 });
 
 await setupRateSyncFromConfig(config);
 
-const result = await checkLimiter('api', userId);
+const result = await checkLimiter('public-api', userId);
 if (!result.allowed) {
   throw new Error(`Rate limited. Retry in ${result.retryAfter}s.`);
 }
@@ -80,7 +80,7 @@ await configureStore('myapp', {
 Controls throughput — allows at most `ratePerSecond` requests per second. Optionally limits parallelism with `maxConcurrent`:
 
 ```typescript
-configureLimiter('api', {
+configureLimiter('public-api', {
   store: 'api-cache',
   ratePerSecond: 100,
   maxConcurrent: 50,
@@ -121,7 +121,7 @@ await configureStore('redis-prod', {
   socketTimeout: 10000,
 });
 
-configureLimiter('api', {
+configureLimiter('public-api', {
   store: 'redis-prod',
   ratePerSecond: 100,
   maxConcurrent: 50,
@@ -135,7 +135,7 @@ await initializeAllLimiters();
 ```typescript
 import { getLimiter } from 'rate-sync';
 
-const metrics = getLimiter('api').getMetrics();
+const metrics = getLimiter('public-api').getMetrics();
 console.log(`Avg wait: ${metrics.avgWaitTimeMs.toFixed(2)}ms`);
 console.log(`Timeouts: ${metrics.timeouts}`);
 ```

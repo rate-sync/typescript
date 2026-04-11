@@ -183,7 +183,7 @@ export interface LimiterConfig {
  * ```typescript
  * const config: RateSyncConfig = {
  *   stores: { 'main-store': { engine: 'redis', url: 'redis://localhost:6379' } },
- *   limiters: { api: { store: 'main-store', ratePerSecond: 100 } },
+ *   limiters: { 'public-api': { store: 'main-store', ratePerSecond: 100 } },
  * };
  * ```
  */

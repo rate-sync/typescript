@@ -69,7 +69,7 @@ function configureLimiter(limiterId: string, config: LimiterConfig): void
 import { configureLimiter } from 'rate-sync';
 
 // Token bucket
-configureLimiter('api', {
+configureLimiter('public-api', {
   store: 'prod',
   ratePerSecond: 100,
   maxConcurrent: 50,
@@ -103,7 +103,7 @@ const config = defineConfig({
     'main-store': { engine: 'redis', url: 'redis://localhost:6379' },
   },
   limiters: {
-    api: { store: 'main-store', ratePerSecond: 100 },
+    'public-api': { store: 'main-store', ratePerSecond: 100 },
   },
 });
 ```
@@ -143,7 +143,7 @@ function getLimiter(limiterId: string): RateLimiter
 ```typescript
 import { getLimiter } from 'rate-sync';
 
-const limiter = getLimiter('api');
+const limiter = getLimiter('public-api');
 const metrics = limiter.getMetrics();
 ```
 
@@ -179,7 +179,7 @@ function cloneLimiter(baseId: string, newId: string): void
 ```typescript
 import { cloneLimiter } from 'rate-sync';
 
-cloneLimiter('api', `api:${userId}`);
+cloneLimiter('public-api', `public-api:${userId}`);
 ```
 
 ---
@@ -232,7 +232,7 @@ function listLimiters(): string[]
 ```typescript
 import { listLimiters } from 'rate-sync';
 
-console.log(listLimiters()); // ["api", "login"]
+console.log(listLimiters()); // ["public-api", "login"]
 ```
 
 ---
@@ -252,7 +252,7 @@ async function initializeLimiter(limiterId: string): Promise<void>
 ```typescript
 import { initializeLimiter } from 'rate-sync';
 
-await initializeLimiter('api');
+await initializeLimiter('public-api');
 ```
 
 ---
@@ -318,7 +318,7 @@ async function checkLimiter(
 ```typescript
 import { checkLimiter } from 'rate-sync';
 
-const result = await checkLimiter('api', userId);
+const result = await checkLimiter('public-api', userId);
 if (!result.allowed) {
   return new Response('Too Many Requests', {
     status: 429,
@@ -472,7 +472,7 @@ class RateLimiter {
 | `resetState(identifier?)` | Clear stored state for a key |
 
 ```typescript
-const limiter = getLimiter('api');
+const limiter = getLimiter('public-api');
 await limiter.initialize();
 
 // Concurrent-safe wrapper
@@ -659,7 +659,7 @@ interface RateLimiterMetrics {
 ```
 
 ```typescript
-const metrics = getLimiter('api').getMetrics();
+const metrics = getLimiter('public-api').getMetrics();
 console.log(`Avg wait: ${metrics.avgWaitTimeMs.toFixed(2)}ms`);
 console.log(`Concurrent: ${metrics.currentConcurrent}`);
 ```

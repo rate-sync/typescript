@@ -21,7 +21,7 @@ describe('defineConfig', () => {
   it('returns the same config object (identity function)', () => {
     const config = {
       stores: { main: { engine: 'memory' as const } },
-      limiters: { api: { store: 'main', algorithm: 'token-bucket' as const, ratePerSecond: 10 } },
+      limiters: { 'test-limiter': { store: 'main', algorithm: 'token-bucket' as const, ratePerSecond: 10 } },
     };
     expect(defineConfig(config)).toBe(config);
   });
@@ -67,17 +67,17 @@ describe('setupRateSyncFromConfig', () => {
   it('works with multiple stores and limiters', async () => {
     await setupRateSyncFromConfig({
       stores: {
-        storeA: { engine: 'memory' },
-        storeB: { engine: 'memory' },
+        'store-a': { engine: 'memory' },
+        'store-b': { engine: 'memory' },
       },
       limiters: {
-        limA: { store: 'storeA', ratePerSecond: 5 },
-        limB: { store: 'storeB', ratePerSecond: 50 },
+        limA: { store: 'store-a', ratePerSecond: 5 },
+        limB: { store: 'store-b', ratePerSecond: 50 },
       },
     });
 
-    expect(listStores()).toContain('storeA');
-    expect(listStores()).toContain('storeB');
+    expect(listStores()).toContain('store-a');
+    expect(listStores()).toContain('store-b');
     expect(listLimiters()).toContain('limA');
     expect(listLimiters()).toContain('limB');
     expect(getLimiter('limA').isInitialized).toBe(true);
