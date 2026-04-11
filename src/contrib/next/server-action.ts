@@ -4,7 +4,7 @@ export interface RateLimitActionError {
   error: { code: 'RATE_LIMIT_EXCEEDED'; message: string; retryAfter: number; };
 }
 
-interface RateLimitActionOptions<TArgs extends unknown[]> {
+export interface RateLimitActionOptions<TArgs extends unknown[]> {
   limiterId: string | string[];
   keyExtractor: (...args: TArgs) => string | Promise<string>;
   failOpen?: boolean;  // default: true

@@ -4,7 +4,7 @@ export type { RateLimiterOptions } from './core/rate-limiter.js';
 
 // Registry functions
 export {
-  configureStore, configureLimiter, getLimiter, cloneLimiter, getOrCloneLimiter,
+  configureStore, configureLimiter, getLimiter, getStore, cloneLimiter, getOrCloneLimiter,
   listStores, listLimiters, acquire, initializeLimiter, initializeAllLimiters,
   checkLimiter, checkMultiLimiters, closeAll,
 } from './core/registry.js';
@@ -18,7 +18,7 @@ export { hashIdentifier, combineIdentifiers } from './core/identifiers.js';
 // Types (re-export all)
 export type {
   RateLimitResult, MultiLimiterResult, LimiterState, RateLimiterMetrics, LimiterReadOnlyConfig,
-  EngineConfig, MemoryEngineConfig, RedisEngineConfig, PostgresEngineConfig,
+  EngineConfig, MemoryEngineConfig, RedisEngineConfig, PostgresEngineConfig, SupportedEngineConfig,
   LimiterConfig, RateSyncConfig,
 } from './core/schemas.js';
 

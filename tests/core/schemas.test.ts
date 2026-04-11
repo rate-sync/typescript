@@ -61,14 +61,14 @@ describe('createRateLimitResult', () => {
     expect(result.retryAfter).toBe(4); // ceil(3.7) = 4, max(1,4) = 4
   });
 
-  it('should clamp retryAfter to minimum of 1 when resetIn is 0 or negative', () => {
+  it('should return retryAfter 0 when allowed is true', () => {
     const resultZero = createRateLimitResult({
       allowed: true,
       limit: 10,
       remaining: 10,
       resetIn: 0,
     });
-    expect(resultZero.retryAfter).toBe(1);
+    expect(resultZero.retryAfter).toBe(0);
 
     const resultNeg = createRateLimitResult({
       allowed: true,
@@ -76,7 +76,7 @@ describe('createRateLimitResult', () => {
       remaining: 10,
       resetIn: -5,
     });
-    expect(resultNeg.retryAfter).toBe(1);
+    expect(resultNeg.retryAfter).toBe(0);
   });
 
   it('should compute resetAt correctly when resetIn is an integer', () => {
@@ -88,7 +88,7 @@ describe('createRateLimitResult', () => {
     });
     const nowSeconds = Math.floor(Date.now() / 1000);
     expect(result.resetAt).toBe(nowSeconds + 30);
-    expect(result.retryAfter).toBe(30);
+    expect(result.retryAfter).toBe(0); // allowed: true → retryAfter is 0
   });
 });
 
@@ -160,7 +160,8 @@ describe('createMultiLimiterResult', () => {
     const multi = createMultiLimiterResult([r1, r2]);
     const nowSeconds = Math.floor(Date.now() / 1000);
     expect(multi.resetAt).toBe(nowSeconds + 20);
-    expect(multi.retryAfter).toBe(20);
+    // Both results are allowed, so retryAfter is 0 on each; multi inherits 0
+    expect(multi.retryAfter).toBe(0);
   });
 });
 

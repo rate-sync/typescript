@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
 import { configureStore, configureLimiter, initializeAllLimiters } from './registry.js';
 import { ConfigValidationError } from './errors.js';
-import type { RateSyncConfig, EngineConfig, LimiterConfig } from './schemas.js';
+import type { RateSyncConfig, SupportedEngineConfig, LimiterConfig } from './schemas.js';
 
 // ---------------------------------------------------------------------------
 // expandEnvVars
@@ -150,7 +150,7 @@ export async function loadConfig(configPath: string): Promise<void> {
   }
 
   for (const [id, config] of Object.entries(rawStores)) {
-    const converted = snakeToCamelKeys(config) as EngineConfig;
+    const converted = snakeToCamelKeys(config) as SupportedEngineConfig;
     await configureStore(id, converted);
   }
 

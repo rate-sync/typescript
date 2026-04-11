@@ -1,5 +1,5 @@
 import { MemoryStore } from '../engines/memory/index.js';
-import type { EngineConfig, LimiterConfig, MultiLimiterResult, RateLimitResult } from './schemas.js';
+import type { SupportedEngineConfig, LimiterConfig, MultiLimiterResult, RateLimitResult } from './schemas.js';
 import { createMultiLimiterResult } from './schemas.js';
 import { LimiterNotFoundError, RateLimiterAlreadyConfiguredError, StoreNotFoundError } from './errors.js';
 import type { RateLimitStore } from '../engines/base.js';
@@ -15,7 +15,7 @@ class Registry {
 
   // ---- Stores ---------------------------------------------------------------
 
-  async configureStore(storeId: string, config: EngineConfig): Promise<void> {
+  async configureStore(storeId: string, config: SupportedEngineConfig): Promise<void> {
     let store: RateLimitStore;
 
     if (config.engine === 'memory') {
@@ -31,10 +31,10 @@ class Registry {
         socketTimeout: config.socketTimeout,
       });
     } else {
-      // postgres: not yet supported via registry
-      throw new Error(
-        `Engine "${config.engine}" is not yet supported in the registry.`,
-      );
+      // This branch is unreachable given SupportedEngineConfig = MemoryEngineConfig | RedisEngineConfig.
+      // Left as a safeguard for runtime callers that bypass TypeScript.
+      const _exhaustive: never = config;
+      throw new Error(`Engine is not yet supported in the registry.`);
     }
 
     this.stores.set(storeId, store);
@@ -186,7 +186,7 @@ function getRegistry(): Registry {
 // Module-level functions
 // ---------------------------------------------------------------------------
 
-export async function configureStore(storeId: string, config: EngineConfig): Promise<void> {
+export async function configureStore(storeId: string, config: SupportedEngineConfig): Promise<void> {
   return getRegistry().configureStore(storeId, config);
 }
 

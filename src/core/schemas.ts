@@ -97,6 +97,8 @@ export interface PostgresEngineConfig {
 
 export type EngineConfig = MemoryEngineConfig | RedisEngineConfig | PostgresEngineConfig;
 
+export type SupportedEngineConfig = MemoryEngineConfig | RedisEngineConfig;
+
 export interface LimiterConfig {
   readonly store: string;
   readonly algorithm?: 'token-bucket' | 'sliding-window';
@@ -124,7 +126,7 @@ export function createRateLimitResult(input: {
 }): RateLimitResult {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const resetAt = nowSeconds + Math.ceil(input.resetIn);
-  const retryAfter = Math.max(1, Math.ceil(input.resetIn));
+  const retryAfter = input.allowed ? 0 : Math.max(1, Math.ceil(input.resetIn));
 
   return {
     allowed: input.allowed,

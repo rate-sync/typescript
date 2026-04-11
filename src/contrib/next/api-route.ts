@@ -4,7 +4,7 @@ import type { RateLimitResult } from '../../core/schemas.js';
 
 type NextRequest = { headers: { get(name: string): string | null }; url: string };
 
-interface WithRateLimitOptions {
+export interface WithRateLimitOptions {
   limiterId: string | string[];
   keyExtractor: (req: NextRequest) => string | Promise<string>;
   failOpen?: boolean;  // default: true
