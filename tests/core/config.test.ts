@@ -9,8 +9,9 @@ import {
   loadConfig,
   defineConfig,
   setupRateSync,
+  setupRateSyncFromConfig,
 } from '../../src/core/config.js';
-import { listStores, listLimiters, closeAll } from '../../src/core/registry.js';
+import { listStores, listLimiters, getLimiter, closeAll } from '../../src/core/registry.js';
 import { ConfigValidationError } from '../../src/core/errors.js';
 
 beforeEach(async () => {
@@ -321,5 +322,57 @@ rate_per_second = 10
 
   it('rejects with ConfigValidationError when file not found', async () => {
     await expect(setupRateSync('/no/such/file.toml')).rejects.toThrow(ConfigValidationError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// setupRateSyncFromConfig
+// ---------------------------------------------------------------------------
+
+describe('setupRateSyncFromConfig', () => {
+  it('registers stores and limiters from a config object', async () => {
+    await setupRateSyncFromConfig({
+      stores: { mem: { engine: 'memory' } },
+      limiters: { test: { store: 'mem', ratePerSecond: 10 } },
+    });
+
+    expect(listStores()).toContain('mem');
+    expect(listLimiters()).toContain('test');
+    const limiter = getLimiter('test');
+    expect(limiter.isInitialized).toBe(true);
+  });
+
+  it('works with a sliding-window limiter', async () => {
+    await setupRateSyncFromConfig({
+      stores: { mem2: { engine: 'memory' } },
+      limiters: {
+        login: { store: 'mem2', algorithm: 'sliding-window', limit: 5, windowSeconds: 60 },
+      },
+    });
+
+    expect(listStores()).toContain('mem2');
+    expect(listLimiters()).toContain('login');
+    const limiter = getLimiter('login');
+    expect(limiter.isInitialized).toBe(true);
+  });
+
+  it('works with multiple stores and limiters', async () => {
+    await setupRateSyncFromConfig({
+      stores: {
+        storeA: { engine: 'memory' },
+        storeB: { engine: 'memory' },
+      },
+      limiters: {
+        limA: { store: 'storeA', ratePerSecond: 5 },
+        limB: { store: 'storeB', ratePerSecond: 50 },
+      },
+    });
+
+    expect(listStores()).toContain('storeA');
+    expect(listStores()).toContain('storeB');
+    expect(listLimiters()).toContain('limA');
+    expect(listLimiters()).toContain('limB');
+    expect(getLimiter('limA').isInitialized).toBe(true);
+    expect(getLimiter('limB').isInitialized).toBe(true);
   });
 });

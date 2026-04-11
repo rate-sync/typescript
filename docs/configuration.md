@@ -1,20 +1,82 @@
 # Configuration Guide
 
-rate-sync supports TOML file configuration, programmatic setup, or both.
+rate-sync supports TypeScript config files (recommended), TOML file configuration, or direct programmatic setup.
 
 ## Configuration Methods
 
-| Method | TOML | Programmatic |
-|--------|------|--------------|
-| Environment variable expansion | Yes | No |
-| Runtime modification | No | Yes |
-| Best for | Static config | Dynamic config |
+| Method | TypeScript Config | TOML | Programmatic |
+|--------|-------------------|------|--------------|
+| Type-safe | Yes | No | Yes |
+| Environment variable expansion | Via `process.env` | Built-in `${VAR}` syntax | Via code |
+| Runtime modification | No | No | Yes |
+| Best for | TypeScript projects | Non-TS / env-heavy config | Dynamic config |
 
-## TOML Configuration
+## TypeScript Configuration (Recommended)
+
+This is the standard approach for TypeScript projects — the same pattern used by Vite, Drizzle ORM, and other modern tools.
+
+### Basic Structure
+
+```typescript
+// rate-sync.config.ts
+import { defineConfig } from 'rate-sync';
+
+export default defineConfig({
+  // Stores define HOW rate limiting is coordinated
+  stores: {
+    local: { engine: 'memory' },
+  },
+  // Limiters define WHAT to rate limit
+  limiters: {
+    api: { store: 'local', ratePerSecond: 10 },
+  },
+});
+```
+
+### Initializing from Config
+
+```typescript
+// instrumentation.ts (or your app entry point)
+import config from './rate-sync.config';
+import { setupRateSyncFromConfig } from 'rate-sync';
+
+await setupRateSyncFromConfig(config);
+```
+
+### Production Example
+
+```typescript
+// rate-sync.config.ts
+import { defineConfig } from 'rate-sync';
+
+export default defineConfig({
+  stores: {
+    redis: {
+      engine: 'redis',
+      url: process.env.REDIS_URL ?? 'redis://localhost:6379',
+      keyPrefix: 'myapp:ratelimit',
+    },
+  },
+  limiters: {
+    api: { store: 'redis', ratePerSecond: 1000, maxConcurrent: 200, timeout: 30000 },
+    login: { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+  },
+});
+```
+
+---
+
+## Alternative: TOML Files
+
+TOML configuration is useful when you need built-in environment variable expansion syntax or are working in non-TypeScript projects.
+
+> **Requires:** `pnpm add smol-toml` (`smol-toml` is an optional dependency)
 
 ### Basic Structure
 
 ```toml
+# rate-sync.toml
+
 # Stores define HOW rate limiting is coordinated
 [stores.local]
 engine = "memory"
@@ -60,26 +122,14 @@ rate_per_second = "${API_RATE_LIMIT:-100}"     # Becomes number 100
 
 ---
 
-## Programmatic Configuration
+## Low-Level Programmatic Configuration
 
 ```typescript
 import { configureStore, configureLimiter, initializeAllLimiters } from 'rate-sync';
 
-// Option 1: Programmatic
 await configureStore('local', { engine: 'memory' });
 configureLimiter('api', { store: 'local', ratePerSecond: 10 });
 await initializeAllLimiters();
-
-// Option 2: Load TOML
-await setupRateSync('rate-sync.toml');
-
-// Option 3: Type-safe config object
-import { defineConfig } from 'rate-sync';
-
-const config = defineConfig({
-  stores: { redis: { engine: 'redis', url: 'redis://localhost:6379' } },
-  limiters: { api: { store: 'redis', ratePerSecond: 100 } },
-});
 ```
 
 ---

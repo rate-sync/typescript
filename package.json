@@ -64,7 +64,8 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
+  "dependencies": {},
+  "optionalDependencies": {
     "smol-toml": "^1.0.0"
   },
   "peerDependencies": {

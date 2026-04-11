@@ -103,7 +103,7 @@ rate_per_second = 100
 
 ## Features
 
-- **Declarative configuration** - Define limits in TOML, use anywhere
+- **TypeScript-native configuration** - `defineConfig()` + `setupRateSyncFromConfig()` like Vite/Drizzle
 - **Multiple backends** - Redis (recommended) or in-memory
 - **Dual limiting** - Rate limiting (req/sec) + concurrency limiting (max parallel)
 - **Two algorithms** - Token bucket for throughput, sliding window for quotas
@@ -127,26 +127,54 @@ Optional peer dependencies — install only what you need:
 
 ## Quick Start
 
-**1. Create `rate-sync.toml`:**
+**1. Create `rate-sync.config.ts`:**
+
+```typescript
+import { defineConfig } from 'rate-sync';
+
+export default defineConfig({
+  stores: {
+    main: { engine: 'memory' }, // or "redis"
+  },
+  limiters: {
+    api: { store: 'main', ratePerSecond: 10 },
+  },
+});
+```
+
+**2. Initialize in `instrumentation.ts` (or your app entry):**
+
+```typescript
+import config from './rate-sync.config';
+import { setupRateSyncFromConfig, acquire } from 'rate-sync';
+
+await setupRateSyncFromConfig(config);
+
+await acquire('api'); // Blocks until rate limit allows
+```
+
+### Alternative: TOML Configuration
+
+If you prefer a TOML file (e.g. for environment-variable expansion or non-TypeScript projects):
 
 ```toml
+# rate-sync.toml
 [stores.main]
-engine = "memory"  # or "redis"
+engine = "memory"
 
 [limiters.api]
 store = "main"
 rate_per_second = 10
 ```
 
-**2. Use it:**
-
 ```typescript
 import { setupRateSync, acquire } from 'rate-sync';
 
 await setupRateSync('./rate-sync.toml');
-
-await acquire('api'); // Blocks until rate limit allows
+await acquire('api');
 ```
+
+> **Note:** TOML support requires `smol-toml` as an optional peer: `pnpm add smol-toml`
 
 ## Usage Patterns
 
@@ -154,10 +182,9 @@ await acquire('api'); // Blocks until rate limit allows
 
 ```typescript
 // app/api/search/route.ts
-import { withRateLimit, setupRateSync } from 'rate-sync/next';
+import { withRateLimit } from 'rate-sync/next';
 import { getClientIp } from 'rate-sync/next';
-
-await setupRateSync('./rate-sync.toml');
+// Initialize once in instrumentation.ts: await setupRateSyncFromConfig(config)
 
 export const GET = withRateLimit(
   async (req) => {
@@ -199,9 +226,9 @@ if (isRateLimitActionError(result)) {
 }
 ```
 
-### Programmatic Configuration
+### Low-Level Programmatic Configuration
 
-Skip the TOML file if you prefer code:
+For dynamic or runtime configuration, use the registry functions directly:
 
 ```typescript
 import { configureStore, configureLimiter, initializeAllLimiters, acquire } from 'rate-sync';
@@ -340,6 +367,26 @@ export const myAction = withRateLimitAction(
 ```
 
 ## Configuration
+
+### TypeScript Config (recommended)
+
+```typescript
+// rate-sync.config.ts
+import { defineConfig } from 'rate-sync';
+
+export default defineConfig({
+  stores: {
+    memory: { engine: 'memory' },
+    redis: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379/0' },
+  },
+  limiters: {
+    api: { store: 'redis', ratePerSecond: 100, maxConcurrent: 10, timeout: 30000 },
+    login: { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+  },
+});
+```
+
+### TOML Config (alternative)
 
 Full TOML reference:
 
