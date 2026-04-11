@@ -51,15 +51,15 @@ import { defineConfig } from 'rate-sync';
 
 export default defineConfig({
   stores: {
-    redis: {
+    'prod-cache': {
       engine: 'redis',
       url: process.env.REDIS_URL ?? 'redis://localhost:6379',
       keyPrefix: 'myapp:ratelimit',
     },
   },
   limiters: {
-    api: { store: 'redis', ratePerSecond: 1000, maxConcurrent: 200, timeout: 30000 },
-    login: { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+    api: { store: 'prod-cache', ratePerSecond: 1000, maxConcurrent: 200, timeout: 30000 },
+    login: { store: 'prod-cache', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
   },
 });
 ```
@@ -177,12 +177,12 @@ export default defineConfig({
 ```typescript
 export default defineConfig({
   stores: {
-    prod: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+    'prod-cache': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
-    api: { store: 'prod', ratePerSecond: 1000, maxConcurrent: 200, timeout: 30000 },
-    partner_api: { store: 'prod', ratePerSecond: 10, timeout: 60000, failClosed: true },
-    login: { store: 'prod', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+    api: { store: 'prod-cache', ratePerSecond: 1000, maxConcurrent: 200, timeout: 30000 },
+    partner_api: { store: 'prod-cache', ratePerSecond: 10, timeout: 60000, failClosed: true },
+    login: { store: 'prod-cache', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
   },
 });
 ```
@@ -192,11 +192,11 @@ export default defineConfig({
 ```typescript
 export default defineConfig({
   stores: {
-    shared: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+    'session-store': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
-    tenant_base: { store: 'shared', ratePerSecond: 10 },
-    tenant_premium: { store: 'shared', ratePerSecond: 100 },
+    tenant_base: { store: 'session-store', ratePerSecond: 10 },
+    tenant_premium: { store: 'session-store', ratePerSecond: 100 },
   },
 });
 ```

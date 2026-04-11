@@ -34,11 +34,11 @@ describe('defineConfig', () => {
 describe('setupRateSyncFromConfig', () => {
   it('registers stores and limiters from a config object', async () => {
     await setupRateSyncFromConfig({
-      stores: { mem: { engine: 'memory' } },
-      limiters: { test: { store: 'mem', ratePerSecond: 10 } },
+      stores: { 'test-store': { engine: 'memory' } },
+      limiters: { test: { store: 'test-store', ratePerSecond: 10 } },
     });
 
-    expect(listStores()).toContain('mem');
+    expect(listStores()).toContain('test-store');
     expect(listLimiters()).toContain('test');
     const limiter = getLimiter('test');
     expect(limiter.isInitialized).toBe(true);
@@ -46,13 +46,13 @@ describe('setupRateSyncFromConfig', () => {
 
   it('works with a sliding-window limiter', async () => {
     await setupRateSyncFromConfig({
-      stores: { mem2: { engine: 'memory' } },
+      stores: { 'auth-store': { engine: 'memory' } },
       limiters: {
-        login: { store: 'mem2', algorithm: 'sliding-window', limit: 5, windowSeconds: 60 },
+        login: { store: 'auth-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 60 },
       },
     });
 
-    expect(listStores()).toContain('mem2');
+    expect(listStores()).toContain('auth-store');
     expect(listLimiters()).toContain('login');
     const limiter = getLimiter('login');
     expect(limiter.isInitialized).toBe(true);

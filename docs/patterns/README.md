@@ -33,10 +33,10 @@ import { defineConfig } from 'rate-sync';
 
 export default defineConfig({
   stores: {
-    redis: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+    'main-store': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
-    api: { store: 'redis', algorithm: 'token-bucket', ratePerSecond: 100 },
+    api: { store: 'main-store', algorithm: 'token-bucket', ratePerSecond: 100 },
   },
 });
 ```

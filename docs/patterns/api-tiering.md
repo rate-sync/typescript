@@ -12,12 +12,12 @@ import { defineConfig } from 'rate-sync';
 
 export default defineConfig({
   stores: {
-    redis: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+    'shared-backend': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
-    api_free: { store: 'redis', algorithm: 'sliding-window', limit: 100, windowSeconds: 3600 },
-    api_pro: { store: 'redis', algorithm: 'sliding-window', limit: 1000, windowSeconds: 3600 },
-    api_enterprise: { store: 'redis', algorithm: 'sliding-window', limit: 10000, windowSeconds: 3600 },
+    api_free: { store: 'shared-backend', algorithm: 'sliding-window', limit: 100, windowSeconds: 3600 },
+    api_pro: { store: 'shared-backend', algorithm: 'sliding-window', limit: 1000, windowSeconds: 3600 },
+    api_enterprise: { store: 'shared-backend', algorithm: 'sliding-window', limit: 10000, windowSeconds: 3600 },
   },
 });
 ```
@@ -103,11 +103,11 @@ export const GET = withRateLimit(
 ```typescript
 // In your defineConfig limiters:
 // Generous for reads
-read_free: { store: 'redis', algorithm: 'sliding-window', limit: 1000, windowSeconds: 3600 },
+read_free: { store: 'shared-backend', algorithm: 'sliding-window', limit: 1000, windowSeconds: 3600 },
 // Strict for writes
-write_free: { store: 'redis', algorithm: 'sliding-window', limit: 100, windowSeconds: 3600 },
+write_free: { store: 'shared-backend', algorithm: 'sliding-window', limit: 100, windowSeconds: 3600 },
 // Very strict for exports
-export_free: { store: 'redis', algorithm: 'sliding-window', limit: 10, windowSeconds: 86400 },
+export_free: { store: 'shared-backend', algorithm: 'sliding-window', limit: 10, windowSeconds: 86400 },
 ```
 
 ```typescript

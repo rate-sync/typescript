@@ -90,25 +90,25 @@ Application Instances          Coordination Store
 ### Rate Limiting (Throughput)
 
 ```typescript
-configureLimiter('external_api', { store: 'redis', ratePerSecond: 10 });
+configureLimiter('external_api', { store: 'prod-cache', ratePerSecond: 10 });
 ```
 
 ### Concurrency Limiting (Parallelism)
 
 ```typescript
-configureLimiter('db_pool', { store: 'redis', maxConcurrent: 20 });
+configureLimiter('db_pool', { store: 'prod-cache', maxConcurrent: 20 });
 ```
 
 ### Combined (Production)
 
 ```typescript
-configureLimiter('production', { store: 'redis', ratePerSecond: 100, maxConcurrent: 50, timeout: 30000 });
+configureLimiter('production', { store: 'prod-cache', ratePerSecond: 100, maxConcurrent: 50, timeout: 30000 });
 ```
 
 ### Auth Protection (Sliding Window)
 
 ```typescript
-configureLimiter('login', { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 });
+configureLimiter('login', { store: 'prod-cache', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 });
 ```
 
 ## Support

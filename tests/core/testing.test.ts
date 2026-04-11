@@ -45,9 +45,9 @@ describe('createTestStore', () => {
 
 describe('resetLimiter', () => {
   it('clears accumulated state for an initialized limiter', async () => {
-    await configureStore('mem', { engine: 'memory' });
+    await configureStore('test-store', { engine: 'memory' });
     configureLimiter('single-lim', {
-      store: 'mem',
+      store: 'test-store',
       algorithm: 'sliding-window',
       limit: 1,
       windowSeconds: 60,
@@ -71,9 +71,9 @@ describe('resetLimiter', () => {
   });
 
   it('does not throw when limiter is not initialized', async () => {
-    await configureStore('mem', { engine: 'memory' });
+    await configureStore('test-store', { engine: 'memory' });
     configureLimiter('uninit-lim', {
-      store: 'mem',
+      store: 'test-store',
       algorithm: 'sliding-window',
       limit: 5,
       windowSeconds: 60,
@@ -157,9 +157,9 @@ describe('resetAllLimiters', () => {
 
 describe('Token bucket timestamp refresh on retry', () => {
   it('succeeds after waiting the full interval and retrying', async () => {
-    await configureStore('mem', { engine: 'memory' });
+    await configureStore('test-store', { engine: 'memory' });
     configureLimiter('tb-retry', {
-      store: 'mem',
+      store: 'test-store',
       algorithm: 'token-bucket',
       ratePerSecond: 2, // interval = 500ms
     });

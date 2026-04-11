@@ -11,7 +11,7 @@ function makeLimiter(overrides: Partial<ConstructorParameters<typeof RateLimiter
   return new RateLimiter({
     id: 'test-limiter',
     store: makeStore(),
-    storeId: 'mem',
+    storeId: 'test-store',
     algorithm: 'token-bucket',
     ratePerSecond: 10,
     ...overrides,

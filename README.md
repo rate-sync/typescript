@@ -17,7 +17,7 @@ Attackers try thousands of password combinations. A sliding window limiter on yo
 
 ```typescript
 configureLimiter('auth_credential', {
-  store: 'redis',
+  store: 'prod-cache',
   algorithm: 'sliding-window',
   limit: 5,          // 5 attempts
   windowSeconds: 300, // per 5 minutes
@@ -66,7 +66,7 @@ Five concurrent 1GB uploads can exhaust server memory. PDF generation can peg ev
 
 ```typescript
 configureLimiter('upload', {
-  store: 'redis',
+  store: 'shared-backend',
   maxConcurrent: 10,  // max 10 uploads at once
   timeout: 300000,    // 5 minutes in ms
 });
@@ -78,7 +78,7 @@ You have 20 workers calling the Stripe API, which allows 100 req/s. Without coor
 
 ```typescript
 configureLimiter('stripe_api', {
-  store: 'redis',
+  store: 'shared-backend',
   ratePerSecond: 90, // stay under Stripe's 100/s limit
   maxConcurrent: 10, // max 10 in-flight calls
 });
@@ -91,10 +91,10 @@ In-memory counters reset when a process restarts and can't coordinate across ins
 ```typescript
 export default defineConfig({
   stores: {
-    redis: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
+    'main-store': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379' },
   },
   limiters: {
-    api: { store: 'redis', ratePerSecond: 100 }, // all instances share this
+    api: { store: 'main-store', ratePerSecond: 100 }, // all instances share this
   },
 });
 ```
@@ -255,7 +255,7 @@ No dependencies required. State is lost on restart and not shared across process
 ### Redis (production / distributed)
 
 ```typescript
-await configureStore('redis', {
+await configureStore('prod-cache', {
   engine: 'redis',
   url: process.env.REDIS_URL ?? 'redis://localhost:6379',
   keyPrefix: 'myapp:',    // optional namespace
@@ -277,7 +277,7 @@ Controls request throughput with optional concurrency limits. Best for API rate 
 
 ```typescript
 configureLimiter('external_api', {
-  store: 'redis',
+  store: 'prod-cache',
   ratePerSecond: 100, // max 100 req/sec
   maxConcurrent: 10,  // max 10 in-flight requests
   timeout: 30000,     // wait up to 30s (ms)
@@ -290,7 +290,7 @@ Counts requests in a fixed time window. Best for login protection and quota enfo
 
 ```typescript
 configureLimiter('login', {
-  store: 'redis',
+  store: 'prod-cache',
   algorithm: 'sliding-window',
   limit: 5,           // max 5 attempts
   windowSeconds: 300, // per 5 minutes
@@ -354,12 +354,12 @@ import { defineConfig } from 'rate-sync';
 
 export default defineConfig({
   stores: {
-    memory: { engine: 'memory' },
-    redis: { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379/0' },
+    'dev-local': { engine: 'memory' },
+    'prod-cache': { engine: 'redis', url: process.env.REDIS_URL ?? 'redis://localhost:6379/0' },
   },
   limiters: {
-    api: { store: 'redis', ratePerSecond: 100, maxConcurrent: 10, timeout: 30000 },
-    login: { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+    api: { store: 'prod-cache', ratePerSecond: 100, maxConcurrent: 10, timeout: 30000 },
+    login: { store: 'prod-cache', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
   },
 });
 ```

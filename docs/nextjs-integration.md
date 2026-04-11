@@ -21,14 +21,14 @@ import { defineConfig } from 'rate-sync';
 
 export default defineConfig({
   stores: {
-    redis: {
+    'main-store': {
       engine: 'redis',
       url: process.env.REDIS_URL ?? 'redis://localhost:6379',
     },
   },
   limiters: {
-    api: { store: 'redis', ratePerSecond: 100, maxConcurrent: 50 },
-    auth: { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+    api: { store: 'main-store', ratePerSecond: 100, maxConcurrent: 50 },
+    auth: { store: 'main-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
   },
 });
 ```
@@ -251,8 +251,8 @@ Protect login and password-reset endpoints against brute force. Add to your `rat
 
 ```typescript
 limiters: {
-  auth_ip: { store: 'redis', algorithm: 'sliding-window', limit: 30, windowSeconds: 60 },
-  auth_credential: { store: 'redis', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
+  auth_ip: { store: 'main-store', algorithm: 'sliding-window', limit: 30, windowSeconds: 60 },
+  auth_credential: { store: 'main-store', algorithm: 'sliding-window', limit: 5, windowSeconds: 300 },
 }
 ```
 
