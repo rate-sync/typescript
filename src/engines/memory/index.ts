@@ -68,6 +68,12 @@ export class MemoryStore implements RateLimitStore {
 
   private _acquireTokenBucket(key: string, config: AcquireConfig): AcquireResult {
     const ratePerSecond = config.ratePerSecond ?? 1;
+
+    // Guard: zero or negative rate means no limiting — allow all
+    if (ratePerSecond <= 0) {
+      return { success: true, waitMs: 0 };
+    }
+
     const interval = 1 / ratePerSecond; // seconds between allowed requests
     const now = Date.now() / 1000;
 
@@ -117,6 +123,12 @@ export class MemoryStore implements RateLimitStore {
   private _acquireSlidingWindow(key: string, config: AcquireConfig): AcquireResult {
     const limit = config.limit ?? 1;
     const windowSeconds = config.windowSeconds ?? 60;
+
+    // Guard: invalid config (zero or negative values) — allow all
+    if (limit <= 0 || windowSeconds <= 0) {
+      return { success: true, waitMs: 0 };
+    }
+
     const now = Date.now() / 1000;
     const cutoff = now - windowSeconds;
 

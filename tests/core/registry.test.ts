@@ -56,6 +56,12 @@ describe('configureStore', () => {
     expect(stores).toContain('store-a');
     expect(stores).toContain('store-b');
   });
+
+  it('throws for unsupported engine', async () => {
+    await expect(
+      configureStore('pg', { engine: 'postgres', connectionString: 'postgres://localhost/db' } as any)
+    ).rejects.toThrow(/not yet supported/);
+  });
 });
 
 // ---------------------------------------------------------------------------

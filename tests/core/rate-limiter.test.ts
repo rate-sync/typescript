@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RateLimiter } from '../../src/core/rate-limiter.js';
 import { MemoryStore } from '../../src/engines/memory/index.js';
 import { RateLimiterNotInitializedError } from '../../src/core/errors.js';
@@ -408,6 +408,65 @@ describe('RateLimiter', () => {
       expect(metrics.timeouts).toBe(0);
       expect(metrics.casFailures).toBe(0);
       expect(metrics.lastAcquisitionAt).toBeNull();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // retry / resetState / tryAcquire with constructor timeout
+  // --------------------------------------------------------------------------
+
+  describe('acquire() retries', () => {
+    it('retries when store returns success:false', async () => {
+      const mockStore = {
+        initialize: async () => {},
+        acquire: vi.fn()
+          .mockResolvedValueOnce({ success: false, waitMs: 1 })
+          .mockResolvedValueOnce({ success: true, waitMs: 0 }),
+        release: async () => {},
+        getState: async () => ({ allowed: true, remaining: 1, resetAt: 0, currentUsage: 0 }),
+        reset: async () => {},
+        close: async () => {},
+      };
+      const limiter = new RateLimiter({ id: 'retry-test', store: mockStore as any, storeId: 'mock' });
+      await limiter.initialize();
+      await limiter.acquire();
+      expect(mockStore.acquire).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('resetState()', () => {
+    it('clears limiter state so requests are allowed again', async () => {
+      const limiter = makeLimiter({
+        algorithm: 'sliding-window',
+        limit: 1,
+        windowSeconds: 60,
+        ratePerSecond: undefined,
+      });
+      await limiter.initialize();
+
+      // Exhaust the limiter
+      const first = await limiter.checkLimit();
+      expect(first.allowed).toBe(true);
+      const blocked = await limiter.checkLimit();
+      expect(blocked.allowed).toBe(false);
+
+      // Reset state
+      await limiter.resetState();
+
+      // Should be allowed again
+      const afterReset = await limiter.checkLimit();
+      expect(afterReset.allowed).toBe(true);
+    });
+  });
+
+  describe('tryAcquire() with constructor timeout', () => {
+    it('uses constructor timeout when no arg passed', async () => {
+      // Very short timeout (1 ms) — should time out immediately when exhausted
+      const limiter = makeLimiter({ ratePerSecond: 1, timeout: 1 });
+      await limiter.initialize();
+      await limiter.tryAcquire(); // consume the token
+      const result = await limiter.tryAcquire(); // no arg — uses constructor timeout of 1ms
+      expect(result).toBe(false);
     });
   });
 });
