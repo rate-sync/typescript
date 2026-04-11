@@ -51,6 +51,7 @@ export class RateLimiter {
   private readonly _failClosed: boolean;
 
   private _initialized = false;
+  private _initPromise: Promise<void> | null = null;
   private _metrics: RateLimiterMetrics;
   private readonly _acquireConfig: AcquireConfig;
 
@@ -72,10 +73,13 @@ export class RateLimiter {
   // ---- Lifecycle ------------------------------------------------------------
 
   async initialize(): Promise<void> {
-    if (!this._initialized) {
-      await this._store.initialize();
-      this._initialized = true;
+    if (this._initialized) return;
+    if (!this._initPromise) {
+      this._initPromise = this._store.initialize().then(() => {
+        this._initialized = true;
+      });
     }
+    await this._initPromise;
   }
 
   // ---- Internal helpers -----------------------------------------------------

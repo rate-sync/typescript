@@ -4,6 +4,16 @@ export interface RateLimitActionError {
   error: { code: 'RATE_LIMIT_EXCEEDED'; message: string; retryAfter: number; };
 }
 
+export function isRateLimitActionError(value: unknown): value is RateLimitActionError {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'error' in value &&
+    typeof (value as any).error === 'object' &&
+    (value as any).error?.code === 'RATE_LIMIT_EXCEEDED'
+  );
+}
+
 export interface RateLimitActionOptions<TArgs extends unknown[]> {
   limiterId: string | string[];
   keyExtractor: (...args: TArgs) => string | Promise<string>;

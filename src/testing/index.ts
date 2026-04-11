@@ -1,5 +1,5 @@
 import { MemoryStore } from '../engines/memory/index.js';
-import { configureStore, configureLimiter, initializeLimiter, checkLimiter, listLimiters, getLimiter, getStore } from '../core/registry.js';
+import { configureStore, configureLimiter, initializeLimiter, initializeAllLimiters, checkLimiter, listLimiters, getLimiter, getStore } from '../core/registry.js';
 import type { LimiterConfig } from '../core/schemas.js';
 import type { RateLimitStore } from '../engines/base.js';
 import type { RateLimiter } from '../core/rate-limiter.js';
@@ -13,6 +13,7 @@ export async function setupTestRateSync(limiters: Record<string, Partial<Limiter
   for (const [id, config] of Object.entries(limiters)) {
     configureLimiter(id, { store: '__test_memory', ...config });
   }
+  await initializeAllLimiters();
 }
 
 /**

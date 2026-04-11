@@ -7,8 +7,19 @@ type NextRequest = { headers: { get(name: string): string | null }; url: string 
 export interface WithRateLimitOptions {
   limiterId: string | string[];
   keyExtractor: (req: NextRequest) => string | Promise<string>;
-  failOpen?: boolean;  // default: true
+  /**
+   * Whether to allow requests when the rate-limit store is unavailable.
+   * When true (default), requests pass through on store errors.
+   * When false, store errors are re-thrown to the caller.
+   * @defaultValue true
+   */
+  failOpen?: boolean;
   onLimitExceeded?: (req: NextRequest, result: RateLimitResult) => Response | Promise<Response>;
+  /**
+   * Called when the rate-limit check throws (e.g., Redis connection lost).
+   * Only fires when failOpen is true. Use this to log infrastructure errors.
+   * If not provided, errors are silently swallowed when failOpen is true.
+   */
   onError?: (req: NextRequest, error: unknown) => void;
 }
 
