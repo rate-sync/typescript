@@ -297,10 +297,13 @@ export class RateLimiter {
   }
 
   /**
-   * Resets all stored state for this limiter (used by testing utilities).
+   * Resets all stored state for this limiter, including per-identifier keys.
+   * Calls store.reset() with a wildcard-style key so the store can clear all
+   * related entries (e.g., "limiter-id" and "limiter-id:user-1").
    */
-  async resetState(): Promise<void> {
+  async resetState(identifier?: string): Promise<void> {
     this._ensureInitialized();
-    await this._store.reset(this._id);
+    const key = identifier ? `${this._id}:${identifier}` : this._id;
+    await this._store.reset(key);
   }
 }

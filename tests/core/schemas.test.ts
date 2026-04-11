@@ -11,6 +11,10 @@ describe('createRateLimitResult', () => {
     vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'));
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('should set allowed, limit, remaining, resetIn, and optional limiterId', () => {
     const result = createRateLimitResult({
       allowed: true,
@@ -96,6 +100,10 @@ describe('createMultiLimiterResult', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('should not crash and return allowed:true when called with empty array', () => {

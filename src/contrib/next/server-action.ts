@@ -17,7 +17,18 @@ export function isRateLimitActionError(value: unknown): value is RateLimitAction
 export interface RateLimitActionOptions<TArgs extends unknown[]> {
   limiterId: string | string[];
   keyExtractor: (...args: TArgs) => string | Promise<string>;
-  failOpen?: boolean;  // default: true
+  /**
+   * Whether to allow the action when the rate-limit store is unavailable.
+   * When true (default), the action runs on store errors.
+   * When false, store errors are re-thrown.
+   * @defaultValue true
+   */
+  failOpen?: boolean;
+  /**
+   * Called when the rate-limit check throws (e.g., Redis connection lost).
+   * Only fires when failOpen is true. Use this to log infrastructure errors.
+   */
+  onError?: (error: unknown) => void;
 }
 
 export function withRateLimitAction<TArgs extends unknown[], TReturn>(
@@ -46,6 +57,7 @@ export function withRateLimitAction<TArgs extends unknown[], TReturn>(
       }
     } catch (error) {
       if (!failOpen) throw error;
+      options.onError?.(error);
       return action(...args);  // failOpen: skip rate limiting, call action once
     }
 
