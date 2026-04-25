@@ -10,7 +10,9 @@
     "url": "https://github.com/rate-sync/typescript.git"
   },
   "homepage": "https://github.com/rate-sync/typescript#readme",
-  "bugs": { "url": "https://github.com/rate-sync/typescript/issues" },
+  "bugs": {
+    "url": "https://github.com/rate-sync/typescript/issues"
+  },
   "keywords": [
     "rate-limiting",
     "distributed-systems",
@@ -36,6 +38,11 @@
       "types": "./dist/redis.d.ts",
       "import": "./dist/redis.js",
       "require": "./dist/redis.cjs"
+    },
+    "./ioredis": {
+      "types": "./dist/ioredis.d.ts",
+      "import": "./dist/ioredis.js",
+      "require": "./dist/ioredis.cjs"
     },
     "./postgres": {
       "types": "./dist/postgres.d.ts",
@@ -66,13 +73,16 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "pnpm build && pnpm typecheck && pnpm test"
   },
-  "dependencies": {},
   "peerDependencies": {
+    "ioredis": ">=5.0.0",
     "next": ">=14.0.0",
     "pg": ">=8.0.0",
     "redis": ">=4.0.0"
   },
   "peerDependenciesMeta": {
+    "ioredis": {
+      "optional": true
+    },
     "redis": {
       "optional": true
     },
@@ -85,6 +95,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "ioredis": "^5.10.1",
     "next": "^14.0.0",
     "react": "^18.0.0",
     "redis": "^4.7.0",
