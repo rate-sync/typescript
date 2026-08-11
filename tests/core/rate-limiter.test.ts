@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RateLimiter } from '../../src/core/rate-limiter.js';
 import { MemoryStore } from '../../src/engines/memory/index.js';
-import { RateLimiterNotInitializedError } from '../../src/core/errors.js';
+import { RateLimiterAcquisitionError, RateLimiterNotInitializedError } from '../../src/core/errors.js';
+import type { RateLimitStore } from '../../src/engines/base.js';
 
 function makeStore(): MemoryStore {
   return new MemoryStore();
@@ -466,6 +467,191 @@ describe('RateLimiter', () => {
       await limiter.tryAcquire(); // consume the token
       const result = await limiter.tryAcquire(); // no arg — uses constructor timeout of 1ms
       expect(result).toBe(false);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // failClosed enforcement
+  // --------------------------------------------------------------------------
+  //
+  // Regression coverage: failClosed used to be a stored-but-unenforced field
+  // (see the removed NOTE in the failClosed getter). initialize() never
+  // caught store.initialize() failures, and none of acquire()/tryAcquire()/
+  // release()/checkLimit()/getState() caught backend failures either.
+
+  describe('failClosed enforcement', () => {
+    function makeFailingStore(overrides: Partial<RateLimitStore> = {}): RateLimitStore {
+      return {
+        initialize: vi.fn().mockRejectedValue(new Error('connection refused')),
+        acquire: vi.fn().mockResolvedValue({ success: true, waitMs: 0 }),
+        release: vi.fn().mockResolvedValue(undefined),
+        getState: vi
+          .fn()
+          .mockResolvedValue({ allowed: true, remaining: 1, resetAt: 0, currentUsage: 0 }),
+        reset: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+        ...overrides,
+      };
+    }
+
+    // ---- initialize() ----
+
+    describe('initialize()', () => {
+      it('failClosed=true rejects with RateLimiterAcquisitionError on backend failure', async () => {
+        const limiter = makeLimiter({ store: makeFailingStore(), failClosed: true });
+        await expect(limiter.initialize()).rejects.toBeInstanceOf(RateLimiterAcquisitionError);
+        expect(limiter.isInitialized).toBe(false);
+      });
+
+      it('failClosed=false (default) resolves without throwing on backend failure', async () => {
+        const limiter = makeLimiter({ store: makeFailingStore(), failClosed: false });
+        await expect(limiter.initialize()).resolves.toBeUndefined();
+        expect(limiter.isInitialized).toBe(false);
+      });
+
+      it('failClosed=false retries the backend on the next initialize() call', async () => {
+        const store = makeFailingStore();
+        const limiter = makeLimiter({ store, failClosed: false });
+        await limiter.initialize();
+        expect(limiter.isInitialized).toBe(false);
+
+        // Backend recovers — the store's initialize() now succeeds.
+        (store.initialize as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+        await limiter.initialize();
+        expect(limiter.isInitialized).toBe(true);
+      });
+    });
+
+    // ---- degraded mode (initialize() failed with failClosed=false) ----
+
+    describe('degraded fail-open mode (after a failed initialize())', () => {
+      it('acquire() resolves without throwing', async () => {
+        const store = makeFailingStore();
+        const limiter = makeLimiter({ store, failClosed: false });
+        await limiter.initialize();
+        await expect(limiter.acquire()).resolves.toBeUndefined();
+        expect(store.acquire).not.toHaveBeenCalled();
+      });
+
+      it('tryAcquire() resolves true', async () => {
+        const store = makeFailingStore();
+        const limiter = makeLimiter({ store, failClosed: false });
+        await limiter.initialize();
+        await expect(limiter.tryAcquire()).resolves.toBe(true);
+        expect(store.acquire).not.toHaveBeenCalled();
+      });
+
+      it('release() resolves without throwing (no-op)', async () => {
+        const store = makeFailingStore();
+        const limiter = makeLimiter({ store, failClosed: false });
+        await limiter.initialize();
+        await expect(limiter.release()).resolves.toBeUndefined();
+        expect(store.release).not.toHaveBeenCalled();
+      });
+
+      it('getState() resolves with a permissive (allowed) state', async () => {
+        const store = makeFailingStore();
+        const limiter = makeLimiter({ store, failClosed: false });
+        await limiter.initialize();
+        const state = await limiter.getState();
+        expect(state.allowed).toBe(true);
+        expect(store.getState).not.toHaveBeenCalled();
+      });
+
+      it('checkLimit() resolves with a permissive (allowed) result', async () => {
+        const store = makeFailingStore();
+        const limiter = makeLimiter({ store, failClosed: false });
+        await limiter.initialize();
+        const result = await limiter.checkLimit();
+        expect(result.allowed).toBe(true);
+        expect(store.acquire).not.toHaveBeenCalled();
+      });
+    });
+
+    // ---- backend failure AFTER a successful initialize() ----
+
+    describe('backend failure after successful initialize()', () => {
+      it('acquire(): failClosed=true rejects with RateLimiterAcquisitionError', async () => {
+        const store = makeFailingStore({ initialize: vi.fn().mockResolvedValue(undefined) });
+        (store.acquire as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('conn lost'));
+        const limiter = makeLimiter({ store, failClosed: true });
+        await limiter.initialize();
+        await expect(limiter.acquire()).rejects.toBeInstanceOf(RateLimiterAcquisitionError);
+      });
+
+      it('acquire(): failClosed=false resolves without throwing', async () => {
+        const store = makeFailingStore({ initialize: vi.fn().mockResolvedValue(undefined) });
+        (store.acquire as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('conn lost'));
+        const limiter = makeLimiter({ store, failClosed: false });
+        await limiter.initialize();
+        await expect(limiter.acquire()).resolves.toBeUndefined();
+      });
+
+      it('tryAcquire(): failClosed=true rejects with RateLimiterAcquisitionError', async () => {
+        const store = makeFailingStore({ initialize: vi.fn().mockResolvedValue(undefined) });
+        (store.acquire as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('conn lost'));
+        const limiter = makeLimiter({ store, failClosed: true });
+        await limiter.initialize();
+        await expect(limiter.tryAcquire()).rejects.toBeInstanceOf(RateLimiterAcquisitionError);
+      });
+
+      it('tryAcquire(): failClosed=false resolves true', async () => {
+        const store = makeFailingStore({ initialize: vi.fn().mockResolvedValue(undefined) });
+        (store.acquire as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('conn lost'));
+        const limiter = makeLimiter({ store, failClosed: false });
+        await limiter.initialize();
+        await expect(limiter.tryAcquire()).resolves.toBe(true);
+      });
+
+      it('release(): failClosed=true rejects with RateLimiterAcquisitionError', async () => {
+        const store = makeFailingStore({ initialize: vi.fn().mockResolvedValue(undefined) });
+        (store.release as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('conn lost'));
+        const limiter = makeLimiter({ store, failClosed: true });
+        await limiter.initialize();
+        await expect(limiter.release()).rejects.toBeInstanceOf(RateLimiterAcquisitionError);
+      });
+
+      it('release(): failClosed=false resolves without throwing', async () => {
+        const store = makeFailingStore({ initialize: vi.fn().mockResolvedValue(undefined) });
+        (store.release as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('conn lost'));
+        const limiter = makeLimiter({ store, failClosed: false });
+        await limiter.initialize();
+        await expect(limiter.release()).resolves.toBeUndefined();
+      });
+
+      it('getState(): failClosed=true rejects with RateLimiterAcquisitionError', async () => {
+        const store = makeFailingStore({ initialize: vi.fn().mockResolvedValue(undefined) });
+        (store.getState as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('conn lost'));
+        const limiter = makeLimiter({ store, failClosed: true });
+        await limiter.initialize();
+        await expect(limiter.getState()).rejects.toBeInstanceOf(RateLimiterAcquisitionError);
+      });
+
+      it('getState(): failClosed=false resolves with a permissive (allowed) state', async () => {
+        const store = makeFailingStore({ initialize: vi.fn().mockResolvedValue(undefined) });
+        (store.getState as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('conn lost'));
+        const limiter = makeLimiter({ store, failClosed: false });
+        await limiter.initialize();
+        const state = await limiter.getState();
+        expect(state.allowed).toBe(true);
+      });
+
+      it('checkLimit(): failClosed=true rejects with RateLimiterAcquisitionError', async () => {
+        const store = makeFailingStore({ initialize: vi.fn().mockResolvedValue(undefined) });
+        (store.acquire as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('conn lost'));
+        const limiter = makeLimiter({ store, failClosed: true });
+        await limiter.initialize();
+        await expect(limiter.checkLimit()).rejects.toBeInstanceOf(RateLimiterAcquisitionError);
+      });
+
+      it('checkLimit(): failClosed=false resolves with a permissive (allowed) result', async () => {
+        const store = makeFailingStore({ initialize: vi.fn().mockResolvedValue(undefined) });
+        (store.acquire as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('conn lost'));
+        const limiter = makeLimiter({ store, failClosed: false });
+        await limiter.initialize();
+        const result = await limiter.checkLimit();
+        expect(result.allowed).toBe(true);
+      });
     });
   });
 });

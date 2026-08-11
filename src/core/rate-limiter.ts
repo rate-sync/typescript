@@ -34,6 +34,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 // ---------------------------------------------------------------------------
 // RateLimiter
 // ---------------------------------------------------------------------------
@@ -52,6 +56,14 @@ export class RateLimiter {
 
   private _initialized = false;
   private _initPromise: Promise<void> | null = null;
+  /**
+   * Set when initialize() fails with failClosed=false. While degraded,
+   * acquire()/tryAcquire()/release()/getState()/checkLimit() return
+   * permissive (allow) results instead of throwing
+   * RateLimiterNotInitializedError. Cleared on the next successful
+   * initialize().
+   */
+  private _degraded = false;
   private _metrics: RateLimiterMetrics;
   private readonly _acquireConfig: AcquireConfig;
 
@@ -76,13 +88,41 @@ export class RateLimiter {
    * Connect to the backing store and mark this limiter as ready.
    * Safe to call multiple times — subsequent calls are no-ops.
    * Must complete before calling `acquire`, `tryAcquire`, `checkLimit`, or `getState`.
+   *
+   * Honors `failClosed` on backend failure: if `failClosed` is `true`, rejects
+   * with `RateLimiterAcquisitionError`. If `failClosed` is `false` (default),
+   * logs a warning and resolves without rejecting, leaving the limiter in a
+   * degraded fail-open mode where `acquire`/`tryAcquire`/`release`/`getState`/
+   * `checkLimit` return permissive (allow) results until a later
+   * `initialize()` call succeeds.
    */
   async initialize(): Promise<void> {
     if (this._initialized) return;
     if (!this._initPromise) {
-      this._initPromise = this._store.initialize().then(() => {
-        this._initialized = true;
-      });
+      this._initPromise = this._store
+        .initialize()
+        .then(() => {
+          this._initialized = true;
+          this._degraded = false;
+        })
+        .catch((error: unknown) => {
+          // Clear the cached promise so a later initialize() call retries
+          // against the backend instead of replaying this rejection forever.
+          this._initPromise = null;
+
+          if (this._failClosed) {
+            throw new RateLimiterAcquisitionError(
+              `Backend failure and failClosed=true for limiter "${this._id}": ${toErrorMessage(error)}`,
+              this._id,
+            );
+          }
+
+          // Fail-open: don't let a backend outage block startup.
+          console.warn(
+            `[rate-sync] Backend unavailable for limiter "${this._id}", continuing in degraded fail-open mode (failClosed=false): ${toErrorMessage(error)}`,
+          );
+          this._degraded = true;
+        });
     }
     await this._initPromise;
   }
@@ -106,6 +146,52 @@ export class RateLimiter {
     }
   }
 
+  /**
+   * Handle a backend failure raised by a store call after successful
+   * initialization. Mirrors the fail_closed contract of `initialize()`:
+   * throws when `failClosed` is `true`, otherwise logs a warning and
+   * returns so the caller can fall back to a permissive result.
+   */
+  private _handleBackendFailure(error: unknown): void {
+    if (this._failClosed) {
+      throw new RateLimiterAcquisitionError(
+        `Backend failure and failClosed=true for limiter "${this._id}": ${toErrorMessage(error)}`,
+        this._id,
+      );
+    }
+    console.warn(
+      `[rate-sync] Backend failure for limiter "${this._id}", allowing request (fail-open): ${toErrorMessage(error)}`,
+    );
+  }
+
+  /** Logs the degraded-mode fallback used when a method is called while not initialized. */
+  private _warnDegraded(method: string): void {
+    console.warn(
+      `[rate-sync] Limiter "${this._id}": backend unavailable (degraded fail-open mode), ${method}() returning a permissive result`,
+    );
+  }
+
+  private _permissiveLimiterState(): LimiterState {
+    return {
+      allowed: true,
+      remaining: 100,
+      resetAt: Math.floor(Date.now() / 1000) + 1,
+      currentUsage: 0,
+    };
+  }
+
+  private _permissiveRateLimitResult(): RateLimitResult {
+    const limit =
+      this._algorithm === 'sliding-window' ? (this._limit ?? 1) : (this._ratePerSecond ?? 1);
+    return createRateLimitResult({
+      allowed: true,
+      limit,
+      remaining: limit,
+      resetIn: 0,
+      limiterId: this._id,
+    });
+  }
+
   private _updateMetricsOnAcquire(waitMs: number): void {
     this._metrics.totalAcquisitions += 1;
     this._metrics.totalWaitTimeMs += waitMs;
@@ -127,68 +213,112 @@ export class RateLimiter {
 
   /**
    * Blocks indefinitely (polling with sleep) until a slot is available.
+   *
+   * In degraded fail-open mode (initialize() failed with failClosed=false),
+   * returns immediately without acquiring a real slot. On a backend failure
+   * after successful initialization, honors failClosed the same way.
    */
   async acquire(): Promise<void> {
-    this._ensureInitialized();
+    if (!this._initialized) {
+      if (this._degraded) {
+        this._warnDegraded('acquire');
+        return;
+      }
+      throw new RateLimiterNotInitializedError(this._id);
+    }
     const config = this._acquireConfig;
     const startMs = Date.now();
 
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const result = await this._store.acquire(this._id, config);
-      if (result.success) {
-        const waitMs = Date.now() - startMs;
-        this._updateMetricsOnAcquire(waitMs);
-        return;
+    try {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const result = await this._store.acquire(this._id, config);
+        if (result.success) {
+          const waitMs = Date.now() - startMs;
+          this._updateMetricsOnAcquire(waitMs);
+          return;
+        }
+        await sleep(result.waitMs > 0 ? result.waitMs : 10);
       }
-      await sleep(result.waitMs > 0 ? result.waitMs : 10);
+    } catch (error: unknown) {
+      this._handleBackendFailure(error);
     }
   }
 
   /**
    * Tries once. Returns false if the slot is unavailable.
    * If timeout is provided, retries until timeout expires.
+   *
+   * In degraded fail-open mode (initialize() failed with failClosed=false),
+   * returns true immediately without acquiring a real slot. On a backend
+   * failure after successful initialization, honors failClosed the same way.
    */
   async tryAcquire(timeout?: number): Promise<boolean> {
-    this._ensureInitialized();
+    if (!this._initialized) {
+      if (this._degraded) {
+        this._warnDegraded('tryAcquire');
+        return true;
+      }
+      throw new RateLimiterNotInitializedError(this._id);
+    }
     const config = this._acquireConfig;
     const effectiveTimeout = timeout ?? this._timeout;
     const deadline = effectiveTimeout !== null ? Date.now() + effectiveTimeout : null;
 
     const startMs = Date.now();
 
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const result = await this._store.acquire(this._id, config);
-      if (result.success) {
-        const waitMs = Date.now() - startMs;
-        this._updateMetricsOnAcquire(waitMs);
-        return true;
-      }
+    try {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const result = await this._store.acquire(this._id, config);
+        if (result.success) {
+          const waitMs = Date.now() - startMs;
+          this._updateMetricsOnAcquire(waitMs);
+          return true;
+        }
 
-      // No timeout — return immediately
-      if (deadline === null) {
-        this._metrics.timeouts += 1;
-        return false;
-      }
+        // No timeout — return immediately
+        if (deadline === null) {
+          this._metrics.timeouts += 1;
+          return false;
+        }
 
-      const remaining = deadline - Date.now();
-      if (remaining <= 0) {
-        this._metrics.timeouts += 1;
-        return false;
-      }
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) {
+          this._metrics.timeouts += 1;
+          return false;
+        }
 
-      const sleepMs = Math.min(result.waitMs > 0 ? result.waitMs : 10, remaining);
-      await sleep(sleepMs);
+        const sleepMs = Math.min(result.waitMs > 0 ? result.waitMs : 10, remaining);
+        await sleep(sleepMs);
+      }
+    } catch (error: unknown) {
+      this._handleBackendFailure(error);
+      return true;
     }
   }
 
   /**
    * Releases a concurrency slot.
+   *
+   * In degraded fail-open mode (initialize() failed with failClosed=false),
+   * this is a no-op. On a backend failure after successful initialization,
+   * honors failClosed the same way as acquire()/tryAcquire().
    */
   async release(): Promise<void> {
-    this._ensureInitialized();
-    await this._store.release(this._id);
+    if (!this._initialized) {
+      if (this._degraded) {
+        this._warnDegraded('release');
+        return;
+      }
+      throw new RateLimiterNotInitializedError(this._id);
+    }
+    try {
+      await this._store.release(this._id);
+    } catch (error: unknown) {
+      this._handleBackendFailure(error);
+      return;
+    }
     this._metrics.currentConcurrent = Math.max(0, this._metrics.currentConcurrent - 1);
     this._metrics.totalReleases += 1;
   }
@@ -216,13 +346,30 @@ export class RateLimiter {
   /**
    * Checks and consumes a rate-limit slot for a given identifier.
    * key = identifier ? `${id}:${identifier}` : id
+   *
+   * In degraded fail-open mode (initialize() failed with failClosed=false),
+   * returns a permissive (allowed) result without consuming a real slot. On
+   * a backend failure after successful initialization, honors failClosed
+   * the same way as acquire()/tryAcquire().
    */
   async checkLimit(identifier?: string): Promise<RateLimitResult> {
-    this._ensureInitialized();
+    if (!this._initialized) {
+      if (this._degraded) {
+        this._warnDegraded('checkLimit');
+        return this._permissiveRateLimitResult();
+      }
+      throw new RateLimiterNotInitializedError(this._id);
+    }
     const key = identifier ? `${this._id}:${identifier}` : this._id;
     const config = this._acquireConfig;
 
-    const result = await this._store.acquire(key, config);
+    let result: Awaited<ReturnType<RateLimitStore['acquire']>>;
+    try {
+      result = await this._store.acquire(key, config);
+    } catch (error: unknown) {
+      this._handleBackendFailure(error);
+      return this._permissiveRateLimitResult();
+    }
 
     // Derive limit and remaining from config fields
     const limit =
@@ -284,9 +431,11 @@ export class RateLimiter {
 
   /**
    * Whether the limiter should block requests when the store is unavailable.
-   * NOTE: This field is stored but not enforced by RateLimiter itself.
-   * Use `failOpen` option on withRateLimit/withRateLimitAction wrappers instead.
-   * Per-limiter failClosed enforcement is planned for P1.
+   *
+   * Enforced by `initialize()`, `acquire()`, `tryAcquire()`, `release()`,
+   * `checkLimit()`, and `getState()`: on a backend failure, `true` throws
+   * `RateLimiterAcquisitionError`; `false` (default) logs a warning and
+   * returns a permissive (allow) result instead.
    */
   get failClosed(): boolean {
     return this._failClosed;
@@ -325,10 +474,29 @@ export class RateLimiter {
     };
   }
 
+  /**
+   * Returns the current state without consuming a slot.
+   *
+   * In degraded fail-open mode (initialize() failed with failClosed=false),
+   * returns a permissive (allowed) state. On a backend failure after
+   * successful initialization, honors failClosed the same way as
+   * acquire()/tryAcquire().
+   */
   async getState(identifier?: string): Promise<LimiterState> {
-    this._ensureInitialized();
+    if (!this._initialized) {
+      if (this._degraded) {
+        this._warnDegraded('getState');
+        return this._permissiveLimiterState();
+      }
+      throw new RateLimiterNotInitializedError(this._id);
+    }
     const key = identifier ? `${this._id}:${identifier}` : this._id;
-    return this._store.getState(key, this._acquireConfig);
+    try {
+      return await this._store.getState(key, this._acquireConfig);
+    } catch (error: unknown) {
+      this._handleBackendFailure(error);
+      return this._permissiveLimiterState();
+    }
   }
 
   /**
