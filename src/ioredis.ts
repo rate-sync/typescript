@@ -2,14 +2,14 @@
  * Public entry for the `ioredis`-backed rate limit store.
  *
  * Use this entry when the host application already depends on `ioredis`.
- * Behaviour is identical to the node-redis variant in `rate-sync/redis`,
+ * Behaviour is identical to the node-redis variant in `@rate-sync/rate-sync/redis`,
  * since both share the same Lua scripts.
  *
  * @example
  * ```typescript
  * import IORedis from 'ioredis';
- * import { IORedisStore } from 'rate-sync/ioredis';
- * import { RateLimiter } from 'rate-sync';
+ * import { IORedisStore } from '@rate-sync/rate-sync/ioredis';
+ * import { RateLimiter } from '@rate-sync/rate-sync';
  *
  * const redis = new IORedis(process.env.REDIS_URL!);
  * const store = new IORedisStore({ client: redis });

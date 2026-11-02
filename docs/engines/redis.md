@@ -15,7 +15,7 @@ Tested in CI: Redis 6, Redis 7.
 ## Installation
 
 ```bash
-npm install rate-sync redis
+npm install @rate-sync/rate-sync redis
 ```
 
 `redis` (node-redis v4+) is a peer dependency. If it is not installed, `configureStore` will throw when creating a Redis store.
@@ -23,7 +23,7 @@ npm install rate-sync redis
 ## Quick Start
 
 ```typescript
-import { defineConfig, setupRateSyncFromConfig, checkLimiter } from 'rate-sync';
+import { defineConfig, setupRateSyncFromConfig, checkLimiter } from '@rate-sync/rate-sync';
 
 const config = defineConfig({
   stores: {
@@ -112,7 +112,7 @@ await configureStore('redis-prod', {
 ```
 
 ```typescript
-import { configureStore, configureLimiter, initializeAllLimiters } from 'rate-sync';
+import { configureStore, configureLimiter, initializeAllLimiters } from '@rate-sync/rate-sync';
 
 await configureStore('redis-prod', {
   engine: 'redis',
@@ -133,7 +133,7 @@ await initializeAllLimiters();
 ### Monitoring
 
 ```typescript
-import { getLimiter } from 'rate-sync';
+import { getLimiter } from '@rate-sync/rate-sync';
 
 const metrics = getLimiter('public-api').getMetrics();
 console.log(`Avg wait: ${metrics.avgWaitTimeMs.toFixed(2)}ms`);

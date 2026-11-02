@@ -1,6 +1,6 @@
 # API Tiering
 
-> **Requires:** `npm install rate-sync redis` for Redis-backed examples.
+> **Requires:** `npm install @rate-sync/rate-sync redis` for Redis-backed examples.
 
 Apply different rate limits to different user tiers (free, pro, enterprise).
 
@@ -8,7 +8,7 @@ Apply different rate limits to different user tiers (free, pro, enterprise).
 
 ```typescript
 // rate-sync.config.ts
-import { defineConfig } from 'rate-sync';
+import { defineConfig } from '@rate-sync/rate-sync';
 
 export default defineConfig({
   stores: {
@@ -28,8 +28,8 @@ export default defineConfig({
 
 ```typescript
 // app/api/data/route.ts
-import { getOrCloneLimiter, getLimiter, initializeLimiter } from 'rate-sync';
-import { getRateLimitHeaders } from 'rate-sync/next';
+import { getOrCloneLimiter, getLimiter, initializeLimiter } from '@rate-sync/rate-sync';
+import { getRateLimitHeaders } from '@rate-sync/rate-sync/next';
 import { getUserFromApiKey } from '@/lib/auth';
 
 export async function GET(req: Request) {
@@ -72,8 +72,8 @@ export async function GET(req: Request) {
 
 ```typescript
 // app/api/data/route.ts
-import { withRateLimit, getClientIp } from 'rate-sync/next';
-import { getOrCloneLimiter, getLimiter, initializeLimiter } from 'rate-sync';
+import { withRateLimit, getClientIp } from '@rate-sync/rate-sync/next';
+import { getOrCloneLimiter, getLimiter, initializeLimiter } from '@rate-sync/rate-sync';
 import { getUserFromApiKey } from '@/lib/auth';
 
 export const GET = withRateLimit(
@@ -151,7 +151,7 @@ export async function POST(req: Request) {
 Include rate limit context in responses so API clients can display quota information:
 
 ```typescript
-import { getRateLimitHeaders } from 'rate-sync/next';
+import { getRateLimitHeaders } from '@rate-sync/rate-sync/next';
 
 const result = await limiter.checkLimit(userId);
 

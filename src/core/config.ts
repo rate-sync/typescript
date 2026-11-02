@@ -23,12 +23,12 @@ export function defineConfig(config: RateSyncConfig): RateSyncConfig {
  * @example
  * ```typescript
  * // rate-sync.config.ts
- * import { defineConfig } from 'rate-sync';
+ * import { defineConfig } from '@rate-sync/rate-sync';
  * export default defineConfig({ stores: {...}, limiters: {...} });
  *
  * // instrumentation.ts
  * import config from './rate-sync.config';
- * import { setupRateSyncFromConfig } from 'rate-sync';
+ * import { setupRateSyncFromConfig } from '@rate-sync/rate-sync';
  * await setupRateSyncFromConfig(config);
  * ```
  */

@@ -1,12 +1,12 @@
 # Next.js Integration
 
-rate-sync provides first-class integration with Next.js via the `rate-sync/next` subpackage.
+rate-sync provides first-class integration with Next.js via the `@rate-sync/rate-sync/next` subpackage.
 
 ## Installation
 
 ```bash
-npm install rate-sync redis          # Redis backend (recommended)
-npm install rate-sync                # Memory backend only (development)
+npm install @rate-sync/rate-sync redis          # Redis backend (recommended)
+npm install @rate-sync/rate-sync                # Memory backend only (development)
 ```
 
 Peer dependency `next >= 14.0.0` is required.
@@ -17,7 +17,7 @@ Peer dependency `next >= 14.0.0` is required.
 
 ```typescript
 // rate-sync.config.ts
-import { defineConfig } from 'rate-sync';
+import { defineConfig } from '@rate-sync/rate-sync';
 
 export default defineConfig({
   stores: {
@@ -41,7 +41,7 @@ Use Next.js `instrumentation.ts` (Next.js 13.4+):
 // instrumentation.ts  (place at project root)
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const { setupRateSyncFromConfig } = await import('rate-sync');
+    const { setupRateSyncFromConfig } = await import('@rate-sync/rate-sync');
     const { default: config } = await import('./rate-sync.config');
     await setupRateSyncFromConfig(config);
   }
@@ -56,7 +56,7 @@ Use `withRateLimit` to wrap any App Router route handler:
 
 ```typescript
 // app/api/data/route.ts
-import { withRateLimit, getClientIp } from 'rate-sync/next';
+import { withRateLimit, getClientIp } from '@rate-sync/rate-sync/next';
 
 export const GET = withRateLimit(
   async (req) => {
@@ -75,7 +75,7 @@ Rate limit headers (`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`,
 
 ```typescript
 // app/api/protected/route.ts
-import { withRateLimit } from 'rate-sync/next';
+import { withRateLimit } from '@rate-sync/rate-sync/next';
 import { getServerSession } from 'next-auth';
 
 export const POST = withRateLimit(
@@ -149,7 +149,7 @@ Use `withRateLimitAction` to protect Server Actions. It returns a `RateLimitActi
 // app/actions/submit.ts
 'use server';
 
-import { withRateLimitAction } from 'rate-sync/next';
+import { withRateLimitAction } from '@rate-sync/rate-sync/next';
 import { headers } from 'next/headers';
 
 export const submitForm = withRateLimitAction(
@@ -174,7 +174,7 @@ export const submitForm = withRateLimitAction(
 // app/components/ContactForm.tsx
 'use client';
 
-import { isRateLimitActionError } from 'rate-sync/next';
+import { isRateLimitActionError } from '@rate-sync/rate-sync/next';
 import { submitForm } from '../actions/submit';
 
 export function ContactForm() {
@@ -206,8 +206,8 @@ For global rate limiting across all (or selected) routes, use Next.js `middlewar
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { checkLimiter, getLimiter, initializeLimiter } from 'rate-sync';
-import { getClientIp, setRateLimitHeaders } from 'rate-sync/next';
+import { checkLimiter, getLimiter, initializeLimiter } from '@rate-sync/rate-sync';
+import { getClientIp, setRateLimitHeaders } from '@rate-sync/rate-sync/next';
 
 export async function middleware(req: NextRequest) {
   try {
@@ -258,9 +258,9 @@ limiters: {
 
 ```typescript
 // app/api/auth/login/route.ts
-import { checkMultiLimiters } from 'rate-sync';
-import { getClientIp, getRateLimitHeaders } from 'rate-sync/next';
-import { hashIdentifier, combineIdentifiers } from 'rate-sync';
+import { checkMultiLimiters } from '@rate-sync/rate-sync';
+import { getClientIp, getRateLimitHeaders } from '@rate-sync/rate-sync/next';
+import { hashIdentifier, combineIdentifiers } from '@rate-sync/rate-sync';
 
 export async function POST(req: Request) {
   const { email, password } = await req.json();

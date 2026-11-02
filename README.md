@@ -41,7 +41,7 @@ const limiter = await getKeyedLimiter(`api_${tier}`, apiKey);
 In multi-tenant systems, a single noisy tenant can starve everyone else. Per-tenant rate limiting enforces fair usage — each tenant gets their share, and no one can monopolize your infrastructure.
 
 ```typescript
-import { getKeyedLimiter } from 'rate-sync';
+import { getKeyedLimiter } from '@rate-sync/rate-sync';
 
 const limiter = await getKeyedLimiter('platform_api', tenantId);
 await limiter.acquire();
@@ -110,10 +110,13 @@ export default defineConfig({
 
 ## Installation
 
+> The npm package is published as `@rate-sync/rate-sync` (the unscoped name `rate-sync` is refused
+> by npm because it is too similar to the existing `ratesync` package).
+
 ```bash
-pnpm add rate-sync             # Memory backend only
-pnpm add rate-sync redis       # + Redis support
-pnpm add rate-sync next        # + Next.js integration
+pnpm add @rate-sync/rate-sync             # Memory backend only
+pnpm add @rate-sync/rate-sync redis       # + Redis support
+pnpm add @rate-sync/rate-sync next        # + Next.js integration
 ```
 
 Optional peer dependencies — install only what you need:
@@ -128,7 +131,7 @@ Optional peer dependencies — install only what you need:
 **1. Create `rate-sync.config.ts`:**
 
 ```typescript
-import { defineConfig } from 'rate-sync';
+import { defineConfig } from '@rate-sync/rate-sync';
 
 export default defineConfig({
   stores: {
@@ -144,7 +147,7 @@ export default defineConfig({
 
 ```typescript
 import config from './rate-sync.config';
-import { setupRateSyncFromConfig } from 'rate-sync';
+import { setupRateSyncFromConfig } from '@rate-sync/rate-sync';
 
 await setupRateSyncFromConfig(config);
 // All stores connected and limiters initialized — ready to handle requests
@@ -156,8 +159,8 @@ await setupRateSyncFromConfig(config);
 
 ```typescript
 // app/api/search/route.ts
-import { withRateLimit } from 'rate-sync/next';
-import { getClientIp } from 'rate-sync/next';
+import { withRateLimit } from '@rate-sync/rate-sync/next';
+import { getClientIp } from '@rate-sync/rate-sync/next';
 // Initialize once in instrumentation.ts: await setupRateSyncFromConfig(config)
 
 export const GET = withRateLimit(
@@ -176,7 +179,7 @@ export const GET = withRateLimit(
 ```typescript
 // app/actions.ts
 'use server';
-import { withRateLimitAction, isRateLimitActionError } from 'rate-sync/next';
+import { withRateLimitAction, isRateLimitActionError } from '@rate-sync/rate-sync/next';
 import { headers } from 'next/headers';
 
 export const submitForm = withRateLimitAction(
@@ -205,7 +208,7 @@ if (isRateLimitActionError(result)) {
 For dynamic or runtime configuration, use the registry functions directly:
 
 ```typescript
-import { configureStore, configureLimiter, initializeAllLimiters, acquire } from 'rate-sync';
+import { configureStore, configureLimiter, initializeAllLimiters, acquire } from '@rate-sync/rate-sync';
 
 await configureStore('main', { engine: 'redis', url: 'redis://localhost:6379/0' });
 configureLimiter('public-api', { store: 'main', ratePerSecond: 100 });
@@ -217,7 +220,7 @@ await acquire('public-api');
 ### Per-User / Per-Tenant Limits
 
 ```typescript
-import { getKeyedLimiter } from 'rate-sync';
+import { getKeyedLimiter } from '@rate-sync/rate-sync';
 
 // Key the base limiter by tenant: one shared store connection, nothing registered per tenant
 const limiter = await getKeyedLimiter('public-api', tenantId);
@@ -231,7 +234,7 @@ if (!result.allowed) {
 ### Concurrency Limiting
 
 ```typescript
-import { getLimiter } from 'rate-sync';
+import { getLimiter } from '@rate-sync/rate-sync';
 
 const limiter = getLimiter('upload');
 await limiter.using(async () => {
@@ -296,9 +299,9 @@ configureLimiter('login', {
 
 ## Next.js Integration
 
-> **Requires:** `pnpm add rate-sync next`
+> **Requires:** `pnpm add @rate-sync/rate-sync next`
 
-Import from `rate-sync/next`:
+Import from `@rate-sync/rate-sync/next`:
 
 ```typescript
 import {
@@ -307,7 +310,7 @@ import {
   isRateLimitActionError, // type guard for action errors
   getClientIp,            // extracts IP from x-forwarded-for / x-real-ip
   getRateLimitHeaders,    // returns RateLimit-* response headers
-} from 'rate-sync/next';
+} from '@rate-sync/rate-sync/next';
 ```
 
 **`withRateLimit` — API Route wrapper**
@@ -347,7 +350,7 @@ export const myAction = withRateLimitAction(
 
 ```typescript
 // rate-sync.config.ts
-import { defineConfig } from 'rate-sync';
+import { defineConfig } from '@rate-sync/rate-sync';
 
 export default defineConfig({
   stores: {

@@ -6,6 +6,9 @@ statement. Never publish from a local machine.
 
 ## Authentication
 
+The package is `@rate-sync/rate-sync`, in the npm organization `rate-sync` (the unscoped name
+`rate-sync` is refused by npm as too similar to `ratesync`).
+
 Preferred: npm **Trusted Publishing** (OIDC), no stored secret. On npmjs.com open the package
 settings, section Trusted Publisher, choose GitHub Actions and enter owner `rate-sync`,
 repository `typescript` and workflow file `publish.yml`. Leave the environment empty and leave the
@@ -45,8 +48,8 @@ configure Trusted Publishing.
 4. Verify:
 
    ```bash
-   npm view rate-sync version
-   npm view rate-sync dist.tarball
+   npm view @rate-sync/rate-sync version
+   npm view @rate-sync/rate-sync dist.tarball
    ```
 
    The package page on npmjs.com shows the provenance badge.
@@ -60,5 +63,5 @@ configure Trusted Publishing.
 
 ## Rollback
 
-`npm deprecate rate-sync@X.Y.Z "reason"` (a published version cannot be replaced), then publish a
+`npm deprecate @rate-sync/rate-sync@X.Y.Z "reason"` (a published version cannot be replaced), then publish a
 fixed patch release. `npm unpublish` is only possible in the first 72 hours.

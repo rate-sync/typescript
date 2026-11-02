@@ -19,7 +19,7 @@ This is the standard approach for TypeScript projects — the same pattern used 
 
 ```typescript
 // rate-sync.config.ts
-import { defineConfig } from 'rate-sync';
+import { defineConfig } from '@rate-sync/rate-sync';
 
 export default defineConfig({
   // Stores define HOW rate limiting is coordinated
@@ -38,7 +38,7 @@ export default defineConfig({
 ```typescript
 // instrumentation.ts (or your app entry point)
 import config from './rate-sync.config';
-import { setupRateSyncFromConfig } from 'rate-sync';
+import { setupRateSyncFromConfig } from '@rate-sync/rate-sync';
 
 await setupRateSyncFromConfig(config);
 ```
@@ -47,7 +47,7 @@ await setupRateSyncFromConfig(config);
 
 ```typescript
 // rate-sync.config.ts
-import { defineConfig } from 'rate-sync';
+import { defineConfig } from '@rate-sync/rate-sync';
 
 export default defineConfig({
   stores: {
@@ -69,7 +69,7 @@ export default defineConfig({
 ## Low-Level Programmatic Configuration
 
 ```typescript
-import { configureStore, configureLimiter, initializeAllLimiters } from 'rate-sync';
+import { configureStore, configureLimiter, initializeAllLimiters } from '@rate-sync/rate-sync';
 
 await configureStore('local', { engine: 'memory' });
 configureLimiter('public-api', { store: 'local', ratePerSecond: 10 });
@@ -202,7 +202,7 @@ export default defineConfig({
 ```
 
 ```typescript
-import { getOrCloneLimiter } from 'rate-sync';
+import { getOrCloneLimiter } from '@rate-sync/rate-sync';
 
 // Get or create a per-tenant limiter cloned from 'tenant_base'
 const limiter = getOrCloneLimiter('tenant_base', `tenant:${tenantId}`);

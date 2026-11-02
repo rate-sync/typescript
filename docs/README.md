@@ -30,8 +30,8 @@ Distributed rate limiting for TypeScript with declarative configuration.
 ### 1. Install
 
 ```bash
-npm install rate-sync                # Development (memory only)
-npm install rate-sync redis          # Production (Redis backend)
+npm install @rate-sync/rate-sync                # Development (memory only)
+npm install @rate-sync/rate-sync redis          # Production (Redis backend)
 ```
 
 ### 2. Configure
@@ -39,7 +39,7 @@ npm install rate-sync redis          # Production (Redis backend)
 Create `rate-sync.config.ts`:
 
 ```typescript
-import { defineConfig } from 'rate-sync';
+import { defineConfig } from '@rate-sync/rate-sync';
 
 export default defineConfig({
   stores: {
@@ -55,7 +55,7 @@ export default defineConfig({
 
 ```typescript
 import config from './rate-sync.config';
-import { setupRateSyncFromConfig, acquire } from 'rate-sync';
+import { setupRateSyncFromConfig, acquire } from '@rate-sync/rate-sync';
 
 // Load config and initialize all limiters on startup
 await setupRateSyncFromConfig(config);

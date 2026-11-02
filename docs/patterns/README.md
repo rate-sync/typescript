@@ -29,7 +29,7 @@ Common patterns for implementing rate limiting with rate-sync.
 
 ```typescript
 // rate-sync.config.ts
-import { defineConfig } from 'rate-sync';
+import { defineConfig } from '@rate-sync/rate-sync';
 
 export default defineConfig({
   stores: {
@@ -42,8 +42,8 @@ export default defineConfig({
 ```
 
 ```typescript
-import { setupRateSyncFromConfig, checkLimiter } from 'rate-sync';
-import { getClientIp } from 'rate-sync/next';
+import { setupRateSyncFromConfig, checkLimiter } from '@rate-sync/rate-sync';
+import { getClientIp } from '@rate-sync/rate-sync/next';
 import config from './rate-sync.config';
 
 await setupRateSyncFromConfig(config);

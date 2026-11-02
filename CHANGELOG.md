@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - 2026-11-02
+## [0.2.1] - 2026-11-02
+
+First release published to npm, as **`@rate-sync/rate-sync`**. The unscoped name `rate-sync` is refused
+by npm ("Package name too similar to existing package ratesync"), so the package lives in the
+`@rate-sync` organization, which matches the GitHub organization. Install with
+`pnpm add @rate-sync/rate-sync` and import from `@rate-sync/rate-sync` (and
+`@rate-sync/rate-sync/next`, `/redis`, `/ioredis`, `/memory`, `/testing`). The tag `v0.2.0` was
+pushed first but its publish was rejected by npm, nothing was released under it; `0.2.1` carries the
+same content under the final name.
 
 ### Added
 

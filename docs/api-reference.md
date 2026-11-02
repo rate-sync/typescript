@@ -2,16 +2,16 @@
 
 Complete API documentation for rate-sync.
 
-Import from the `rate-sync` package:
+Import from the `@rate-sync/rate-sync` package:
 
 ```typescript
-import { configureStore, configureLimiter, acquire, checkLimiter } from 'rate-sync';
+import { configureStore, configureLimiter, acquire, checkLimiter } from '@rate-sync/rate-sync';
 ```
 
-Next.js helpers import from `rate-sync/next`:
+Next.js helpers import from `@rate-sync/rate-sync/next`:
 
 ```typescript
-import { withRateLimit, withRateLimitAction, getClientIp } from 'rate-sync/next';
+import { withRateLimit, withRateLimitAction, getClientIp } from '@rate-sync/rate-sync/next';
 ```
 
 ---
@@ -34,7 +34,7 @@ async function configureStore(storeId: string, config: SupportedEngineConfig): P
 **Throws:** `Error` if engine type is unknown.
 
 ```typescript
-import { configureStore } from 'rate-sync';
+import { configureStore } from '@rate-sync/rate-sync';
 
 // Memory store (development)
 await configureStore('dev', { engine: 'memory' });
@@ -66,7 +66,7 @@ function configureLimiter(limiterId: string, config: LimiterConfig): void
 **Throws:** `RateLimiterAlreadyConfiguredError` if ID already registered. `StoreNotFoundError` if referenced store does not exist.
 
 ```typescript
-import { configureLimiter } from 'rate-sync';
+import { configureLimiter } from '@rate-sync/rate-sync';
 
 // Token bucket
 configureLimiter('public-api', {
@@ -96,7 +96,7 @@ function defineConfig(config: RateSyncConfig): RateSyncConfig
 ```
 
 ```typescript
-import { defineConfig } from 'rate-sync';
+import { defineConfig } from '@rate-sync/rate-sync';
 
 const config = defineConfig({
   stores: {
@@ -120,7 +120,7 @@ async function setupRateSyncFromConfig(config: RateSyncConfig): Promise<void>
 
 ```typescript
 import config from './rate-sync.config';
-import { setupRateSyncFromConfig } from 'rate-sync';
+import { setupRateSyncFromConfig } from '@rate-sync/rate-sync';
 
 // Typically called once at application startup (e.g., instrumentation.ts)
 await setupRateSyncFromConfig(config);
@@ -141,7 +141,7 @@ function getLimiter(limiterId: string): RateLimiter
 **Throws:** `LimiterNotFoundError`
 
 ```typescript
-import { getLimiter } from 'rate-sync';
+import { getLimiter } from '@rate-sync/rate-sync';
 
 const limiter = getLimiter('public-api');
 const metrics = limiter.getMetrics();
@@ -177,7 +177,7 @@ function cloneLimiter(baseId: string, newId: string): void
 **Throws:** `LimiterNotFoundError`, `StoreNotFoundError`
 
 ```typescript
-import { cloneLimiter } from 'rate-sync';
+import { cloneLimiter } from '@rate-sync/rate-sync';
 
 cloneLimiter('public-api', `public-api:${userId}`);
 ```
@@ -199,7 +199,7 @@ async function getKeyedLimiter(baseId: string, identifier: string): Promise<Rate
 The returned object is cheap and may be short-lived: call the function on every request instead of keeping it. Its `getMetrics()` covers that object only. It does not look for a limiter registered as `{baseId}:{identifier}`.
 
 ```typescript
-import { getKeyedLimiter } from 'rate-sync';
+import { getKeyedLimiter } from '@rate-sync/rate-sync';
 
 const limiter = await getKeyedLimiter('public-api', userId);
 if (!(await limiter.tryAcquire())) {
@@ -222,7 +222,7 @@ function getOrCloneLimiter(baseId: string, newId: string): RateLimiter
 **Throws:** `LimiterNotFoundError`
 
 ```typescript
-import { getOrCloneLimiter } from 'rate-sync';
+import { getOrCloneLimiter } from '@rate-sync/rate-sync';
 
 // Per-user rate limiting — cloned once, reused on subsequent requests
 const limiter = getOrCloneLimiter('public-api', `public-api:${userId}`);
@@ -241,7 +241,7 @@ function listStores(): string[]
 ```
 
 ```typescript
-import { listStores } from 'rate-sync';
+import { listStores } from '@rate-sync/rate-sync';
 
 console.log(listStores()); // ["dev", "prod"]
 ```
@@ -257,7 +257,7 @@ function listLimiters(): string[]
 ```
 
 ```typescript
-import { listLimiters } from 'rate-sync';
+import { listLimiters } from '@rate-sync/rate-sync';
 
 console.log(listLimiters()); // ["public-api", "login"]
 ```
@@ -277,7 +277,7 @@ async function initializeLimiter(limiterId: string): Promise<void>
 **Throws:** `LimiterNotFoundError`
 
 ```typescript
-import { initializeLimiter } from 'rate-sync';
+import { initializeLimiter } from '@rate-sync/rate-sync';
 
 await initializeLimiter('public-api');
 ```
@@ -293,7 +293,7 @@ async function initializeAllLimiters(): Promise<void>
 ```
 
 ```typescript
-import { initializeAllLimiters } from 'rate-sync';
+import { initializeAllLimiters } from '@rate-sync/rate-sync';
 
 await initializeAllLimiters();
 ```
@@ -315,7 +315,7 @@ async function acquire(limiterId: string): Promise<void>
 **Throws:** `LimiterNotFoundError`, `RateLimiterNotInitializedError`
 
 ```typescript
-import { acquire } from 'rate-sync';
+import { acquire } from '@rate-sync/rate-sync';
 
 // Blocks until a slot is available
 await acquire('public-api');
@@ -343,7 +343,7 @@ async function checkLimiter(
 **Throws:** `LimiterNotFoundError`, `RateLimiterNotInitializedError`
 
 ```typescript
-import { checkLimiter } from 'rate-sync';
+import { checkLimiter } from '@rate-sync/rate-sync';
 
 const result = await checkLimiter('public-api', userId);
 if (!result.allowed) {
@@ -373,7 +373,7 @@ async function checkMultiLimiters(
 | `identifiers` | `string[]?` | Per-limiter identifiers (positionally aligned with `limiterIds`) |
 
 ```typescript
-import { checkMultiLimiters } from 'rate-sync';
+import { checkMultiLimiters } from '@rate-sync/rate-sync';
 
 const result = await checkMultiLimiters(
   ['auth_ip', 'auth_credential'],
@@ -396,7 +396,7 @@ async function closeAll(): Promise<void>
 ```
 
 ```typescript
-import { closeAll } from 'rate-sync';
+import { closeAll } from '@rate-sync/rate-sync';
 
 process.on('SIGTERM', async () => {
   await closeAll();
@@ -417,7 +417,7 @@ function hashIdentifier(identifier: string): string
 ```
 
 ```typescript
-import { hashIdentifier } from 'rate-sync';
+import { hashIdentifier } from '@rate-sync/rate-sync';
 
 const key = hashIdentifier('user@example.com');
 // → 'a1b2c3d4e5f6g7h8' (16 hex chars)
@@ -434,7 +434,7 @@ function combineIdentifiers(...parts: string[]): string
 ```
 
 ```typescript
-import { combineIdentifiers, hashIdentifier } from 'rate-sync';
+import { combineIdentifiers, hashIdentifier } from '@rate-sync/rate-sync';
 
 const key = combineIdentifiers(clientIp, hashIdentifier(email));
 // → "192.168.1.1:a1b2c3d4e5f6g7h8"
@@ -739,7 +739,7 @@ if (!result.allowed) {
 
 ---
 
-## Next.js Integration (`rate-sync/next`)
+## Next.js Integration (`@rate-sync/rate-sync/next`)
 
 ### withRateLimit
 
@@ -769,7 +769,7 @@ interface WithRateLimitOptions {
 | `onError` | `function?` | Silent | Called when the store throws (only when `failOpen: true`) |
 
 ```typescript
-import { withRateLimit, getClientIp } from 'rate-sync/next';
+import { withRateLimit, getClientIp } from '@rate-sync/rate-sync/next';
 
 export const GET = withRateLimit(
   async (req) => {
@@ -813,7 +813,7 @@ interface RateLimitActionError {
 ```
 
 ```typescript
-import { withRateLimitAction, isRateLimitActionError } from 'rate-sync/next';
+import { withRateLimitAction, isRateLimitActionError } from '@rate-sync/rate-sync/next';
 import { headers } from 'next/headers';
 
 const submitForm = withRateLimitAction(
@@ -858,7 +858,7 @@ function getClientIp(req: { headers: { get(name: string): string | null } }): st
 ```
 
 ```typescript
-import { getClientIp } from 'rate-sync/next';
+import { getClientIp } from '@rate-sync/rate-sync/next';
 
 const ip = getClientIp(req);
 // → "203.0.113.1" (first IP from x-forwarded-for)
@@ -883,7 +883,7 @@ Returns:
 - `Retry-After` — (only when `!result.allowed`) seconds to wait
 
 ```typescript
-import { getRateLimitHeaders } from 'rate-sync/next';
+import { getRateLimitHeaders } from '@rate-sync/rate-sync/next';
 
 const headers = getRateLimitHeaders(result);
 return new Response(null, { status: 429, headers });
@@ -900,7 +900,7 @@ function setRateLimitHeaders(responseHeaders: Headers, result: RateLimitResult):
 ```
 
 ```typescript
-import { setRateLimitHeaders } from 'rate-sync/next';
+import { setRateLimitHeaders } from '@rate-sync/rate-sync/next';
 
 const response = NextResponse.next();
 setRateLimitHeaders(response.headers, result);

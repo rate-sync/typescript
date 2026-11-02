@@ -5,7 +5,7 @@ In-memory rate limiting for single-process applications. Use for development, te
 ## Installation
 
 ```bash
-npm install rate-sync
+npm install @rate-sync/rate-sync
 ```
 
 No additional dependencies required.
@@ -13,7 +13,7 @@ No additional dependencies required.
 ## Quick Start
 
 ```typescript
-import { defineConfig, setupRateSyncFromConfig, acquire } from 'rate-sync';
+import { defineConfig, setupRateSyncFromConfig, acquire } from '@rate-sync/rate-sync';
 
 const config = defineConfig({
   stores: { local: { engine: 'memory' } },
@@ -37,7 +37,7 @@ No additional configuration options. The Memory engine stores state in process m
 ### Programmatic Configuration
 
 ```typescript
-import { configureStore, configureLimiter, initializeAllLimiters } from 'rate-sync';
+import { configureStore, configureLimiter, initializeAllLimiters } from '@rate-sync/rate-sync';
 
 await configureStore('local', { engine: 'memory' });
 configureLimiter('public-api', { store: 'local', ratePerSecond: 10 });

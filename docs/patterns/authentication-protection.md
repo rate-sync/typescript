@@ -1,6 +1,6 @@
 # Authentication Protection
 
-> **Requires:** `npm install rate-sync redis` for the Redis-backed examples below.
+> **Requires:** `npm install @rate-sync/rate-sync redis` for the Redis-backed examples below.
 
 Protect auth endpoints against brute force, credential stuffing, and account enumeration using composite rate limiting.
 
@@ -8,7 +8,7 @@ Protect auth endpoints against brute force, credential stuffing, and account enu
 
 ```typescript
 // rate-sync.config.ts
-import { defineConfig } from 'rate-sync';
+import { defineConfig } from '@rate-sync/rate-sync';
 
 export default defineConfig({
   stores: {
@@ -29,9 +29,9 @@ export default defineConfig({
 
 ```typescript
 // app/api/auth/login/route.ts
-import { checkMultiLimiters } from 'rate-sync';
-import { getClientIp, getRateLimitHeaders } from 'rate-sync/next';
-import { hashIdentifier, combineIdentifiers } from 'rate-sync';
+import { checkMultiLimiters } from '@rate-sync/rate-sync';
+import { getClientIp, getRateLimitHeaders } from '@rate-sync/rate-sync/next';
+import { hashIdentifier, combineIdentifiers } from '@rate-sync/rate-sync';
 
 export async function POST(req: Request) {
   const { email, password } = await req.json();
@@ -69,8 +69,8 @@ export async function POST(req: Request) {
 // app/actions/auth.ts
 'use server';
 
-import { withRateLimitAction, isRateLimitActionError } from 'rate-sync/next';
-import { hashIdentifier, combineIdentifiers } from 'rate-sync';
+import { withRateLimitAction, isRateLimitActionError } from '@rate-sync/rate-sync/next';
+import { hashIdentifier, combineIdentifiers } from '@rate-sync/rate-sync';
 import { headers } from 'next/headers';
 
 export const loginAction = withRateLimitAction(
