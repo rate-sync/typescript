@@ -1,0 +1,93 @@
+# Publishes the package to npm when a version tag (v0.2.0) is pushed.
+#
+# The package is built by this workflow and published with an npm provenance statement
+# (`--provenance`), so anyone can verify which repository, workflow and commit produced it.
+# Do not publish from a local machine. See RELEASING.md.
+#
+# Authentication, in order of preference:
+#   1. npm Trusted Publishing (OIDC), no stored secret: configure it in the package settings on
+#      npmjs.com (owner rate-sync, repository typescript, workflow publish.yml) and leave the
+#      NPM_TOKEN secret unset. It can only be configured once the package exists.
+#   2. A short-lived automation token in the NPM_TOKEN repository secret. Needed for the very
+#      first publish only; delete the secret and the token afterwards.
+
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      REDIS_URL: redis://localhost:6379
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm test
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: test
+
+    permissions:
+      contents: write # create the GitHub release
+      id-token: write # npm provenance and Trusted Publishing (OIDC)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # npm 11.5.1 or later is required for Trusted Publishing; Node 24 ships it.
+          node-version: "24"
+          cache: pnpm
+
+      - name: Check the tag matches package.json
+        run: |
+          expected="v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $expected" >&2
+            exit 1
+          fi
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Publish
+        # Tests ran in the previous job and the build above, so skip the prepublishOnly script.
+        run: |
+          [ -n "$NPM_TOKEN" ] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          npm publish --provenance --access public --ignore-scripts
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

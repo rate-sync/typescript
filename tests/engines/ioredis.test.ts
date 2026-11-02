@@ -37,8 +37,8 @@ describe('IORedisStore — construction', () => {
 });
 
 describe('IORedisStore — lifecycle', () => {
-  it('does not own externally-supplied clients', async () => {
-    if (!available) return;
+  it('does not own externally-supplied clients', async (ctx) => {
+    if (!available) return ctx.skip();
     // close() must not disconnect the user-owned client
     const owned = new IORedisStore({ client: externalClient, keyPrefix: KEY_PREFIX });
     await owned.initialize();
@@ -46,8 +46,8 @@ describe('IORedisStore — lifecycle', () => {
     expect(externalClient.status).toBe('ready');
   });
 
-  it('stays usable after close() when client was externally supplied', async () => {
-    if (!available) return;
+  it('stays usable after close() when client was externally supplied', async (ctx) => {
+    if (!available) return ctx.skip();
     const reusable = new IORedisStore({ client: externalClient, keyPrefix: KEY_PREFIX });
     await reusable.initialize();
     await reusable.close();
@@ -60,8 +60,8 @@ describe('IORedisStore — lifecycle', () => {
     expect(result.success).toBe(true);
   });
 
-  it('throws when acquire is called before initialize', async () => {
-    if (!available) return;
+  it('throws when acquire is called before initialize', async (ctx) => {
+    if (!available) return ctx.skip();
     const uninit = new IORedisStore({ client: externalClient, keyPrefix: KEY_PREFIX });
     await expect(
       uninit.acquire('lifecycle:key', { algorithm: 'token-bucket', ratePerSecond: 10 }),
@@ -72,8 +72,8 @@ describe('IORedisStore — lifecycle', () => {
 describe('IORedisStore — Sliding Window', () => {
   const config = { algorithm: 'sliding-window' as const, limit: 3, windowSeconds: 5 };
 
-  it('allows up to limit requests in the window', async () => {
-    if (!available) return;
+  it('allows up to limit requests in the window', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('sw:key1');
     const r1 = await store.acquire('sw:key1', config);
     const r2 = await store.acquire('sw:key1', config);
@@ -82,8 +82,8 @@ describe('IORedisStore — Sliding Window', () => {
     expect(r3.currentCount).toBe(3);
   });
 
-  it('rejects the (limit + 1)th request with waitMs > 0', async () => {
-    if (!available) return;
+  it('rejects the (limit + 1)th request with waitMs > 0', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('sw:key2');
     await store.acquire('sw:key2', config);
     await store.acquire('sw:key2', config);
@@ -93,8 +93,8 @@ describe('IORedisStore — Sliding Window', () => {
     expect(denied.waitMs).toBeGreaterThan(0);
   });
 
-  it('isolates state per key', async () => {
-    if (!available) return;
+  it('isolates state per key', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('sw:keyA');
     await store.reset('sw:keyB');
     await store.acquire('sw:keyA', config);
@@ -106,8 +106,8 @@ describe('IORedisStore — Sliding Window', () => {
     expect(fresh.success).toBe(true);
   });
 
-  it('getState reports remaining without consuming a slot', async () => {
-    if (!available) return;
+  it('getState reports remaining without consuming a slot', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('sw:state');
     await store.acquire('sw:state', config);
     const state = await store.getState('sw:state', config);
@@ -120,16 +120,16 @@ describe('IORedisStore — Sliding Window', () => {
 describe('IORedisStore — Token Bucket', () => {
   const config = { algorithm: 'token-bucket' as const, ratePerSecond: 5 };
 
-  it('first request succeeds with waitMs = 0', async () => {
-    if (!available) return;
+  it('first request succeeds with waitMs = 0', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('tb:first');
     const r = await store.acquire('tb:first', config);
     expect(r.success).toBe(true);
     expect(r.waitMs).toBe(0);
   });
 
-  it('rapid second request is denied with waitMs > 0', async () => {
-    if (!available) return;
+  it('rapid second request is denied with waitMs > 0', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('tb:second');
     await store.acquire('tb:second', config);
     const denied = await store.acquire('tb:second', config);
@@ -139,8 +139,8 @@ describe('IORedisStore — Token Bucket', () => {
 });
 
 describe('IORedisStore — reset', () => {
-  it('clears all keys for a given identifier', async () => {
-    if (!available) return;
+  it('clears all keys for a given identifier', async (ctx) => {
+    if (!available) return ctx.skip();
     const config = { algorithm: 'sliding-window' as const, limit: 1, windowSeconds: 5 };
     await store.acquire('reset:victim', config);
     const denied = await store.acquire('reset:victim', config);

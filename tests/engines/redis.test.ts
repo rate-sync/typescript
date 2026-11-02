@@ -28,22 +28,22 @@ afterAll(async () => {
 // ---------------------------------------------------------------------------
 
 describe('RedisStore — lifecycle', () => {
-  it('should initialize without throwing when Redis is available', async () => {
-    if (!available) return;
+  it('should initialize without throwing when Redis is available', async (ctx) => {
+    if (!available) return ctx.skip();
     // Already initialized in beforeAll — just verify no errors
     expect(available).toBe(true);
   });
 
-  it('should throw when acquire is called before initialize', async () => {
-    if (!available) return;
+  it('should throw when acquire is called before initialize', async (ctx) => {
+    if (!available) return ctx.skip();
     const uninitStore = new RedisStore({ url: REDIS_URL, keyPrefix: KEY_PREFIX });
     await expect(
       uninitStore.acquire('lifecycle:key', { algorithm: 'token-bucket', ratePerSecond: 10 }),
     ).rejects.toThrow('not initialized');
   });
 
-  it('calling initialize() twice does not leak a second client', async () => {
-    if (!available) return;
+  it('calling initialize() twice does not leak a second client', async (ctx) => {
+    if (!available) return ctx.skip();
     // Create a fresh store and initialize twice — should not throw and should
     // still work correctly (idempotency guard: if (this.client) return)
     const idempotentStore = new RedisStore({ url: REDIS_URL, keyPrefix: KEY_PREFIX });
@@ -66,16 +66,16 @@ describe('RedisStore — lifecycle', () => {
 describe('RedisStore — Token Bucket', () => {
   const config = { algorithm: 'token-bucket' as const, ratePerSecond: 1 };
 
-  it('first request should succeed with waitMs = 0', async () => {
-    if (!available) return;
+  it('first request should succeed with waitMs = 0', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('tb:key1');
     const result = await store.acquire('tb:key1', config);
     expect(result.success).toBe(true);
     expect(result.waitMs).toBe(0);
   });
 
-  it('rapid second request should fail with waitMs > 0', async () => {
-    if (!available) return;
+  it('rapid second request should fail with waitMs > 0', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('tb:key2');
     await store.acquire('tb:key2', config);
     const result = await store.acquire('tb:key2', config);
@@ -83,8 +83,8 @@ describe('RedisStore — Token Bucket', () => {
     expect(result.waitMs).toBeGreaterThan(0);
   });
 
-  it('waitMs should be close to interval (≈1000ms for 1 req/s)', async () => {
-    if (!available) return;
+  it('waitMs should be close to interval (≈1000ms for 1 req/s)', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('tb:key3');
     await store.acquire('tb:key3', config);
     const result = await store.acquire('tb:key3', config);
@@ -94,8 +94,8 @@ describe('RedisStore — Token Bucket', () => {
     expect(result.waitMs).toBeLessThanOrEqual(1000);
   });
 
-  it('different keys should be isolated', async () => {
-    if (!available) return;
+  it('different keys should be isolated', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('tb:keyA');
     await store.reset('tb:keyB');
 
@@ -108,8 +108,8 @@ describe('RedisStore — Token Bucket', () => {
     expect(resultB1.waitMs).toBe(0);
   });
 
-  it('after reset, a previously blocked key should succeed again', async () => {
-    if (!available) return;
+  it('after reset, a previously blocked key should succeed again', async (ctx) => {
+    if (!available) return ctx.skip();
     // Use a slower rate so the interval (2s) exceeds any Redis round-trip latency,
     // preventing the "blocked" assertion from racing with token refill.
     const slowConfig = { algorithm: 'token-bucket' as const, ratePerSecond: 0.5 };
@@ -131,8 +131,8 @@ describe('RedisStore — Token Bucket', () => {
 describe('RedisStore — Sliding Window', () => {
   const config = { algorithm: 'sliding-window' as const, limit: 3, windowSeconds: 60 };
 
-  it('first N requests within limit should all succeed', async () => {
-    if (!available) return;
+  it('first N requests within limit should all succeed', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('sw:key1');
     for (let i = 0; i < 3; i++) {
       const result = await store.acquire('sw:key1', config);
@@ -141,8 +141,8 @@ describe('RedisStore — Sliding Window', () => {
     }
   });
 
-  it('N+1 request should fail with waitMs > 0', async () => {
-    if (!available) return;
+  it('N+1 request should fail with waitMs > 0', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('sw:key2');
     for (let i = 0; i < 3; i++) {
       await store.acquire('sw:key2', config);
@@ -152,8 +152,8 @@ describe('RedisStore — Sliding Window', () => {
     expect(result.waitMs).toBeGreaterThan(0);
   });
 
-  it('currentCount should reflect window usage on failure', async () => {
-    if (!available) return;
+  it('currentCount should reflect window usage on failure', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('sw:key3');
     for (let i = 0; i < 3; i++) {
       await store.acquire('sw:key3', config);
@@ -163,8 +163,8 @@ describe('RedisStore — Sliding Window', () => {
     expect(result.currentCount).toBe(3);
   });
 
-  it('different keys should be isolated', async () => {
-    if (!available) return;
+  it('different keys should be isolated', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('sw:keyA');
     await store.reset('sw:keyB');
 
@@ -178,8 +178,8 @@ describe('RedisStore — Sliding Window', () => {
     expect(resultB1.success).toBe(true);
   });
 
-  it('after reset, a previously blocked key should succeed again', async () => {
-    if (!available) return;
+  it('after reset, a previously blocked key should succeed again', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('sw:key4');
     for (let i = 0; i < 3; i++) {
       await store.acquire('sw:key4', config);
@@ -198,8 +198,8 @@ describe('RedisStore — Sliding Window', () => {
 // ---------------------------------------------------------------------------
 
 describe('RedisStore — maxConcurrent', () => {
-  it('should block when maxConcurrent is reached (token-bucket)', async () => {
-    if (!available) return;
+  it('should block when maxConcurrent is reached (token-bucket)', async (ctx) => {
+    if (!available) return ctx.skip();
     const key = 'cc:tb:key1';
     await store.reset(key);
 
@@ -213,6 +213,10 @@ describe('RedisStore — maxConcurrent', () => {
     expect(first.success).toBe(true);
     expect(first.concurrentCount).toBe(1);
 
+    // The rate gate (10 ms at 100/s) is checked before the concurrency gate, so let it elapse:
+    // the refusal below must come from maxConcurrent alone.
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
     const second = await store.acquire(key, config);
     expect(second.success).toBe(false);
     expect(second.waitMs).toBe(0); // concurrent block returns waitMs = -1 → mapped to 0
@@ -222,8 +226,8 @@ describe('RedisStore — maxConcurrent', () => {
     await store.reset(key);
   });
 
-  it('should allow requests after release (sliding-window)', async () => {
-    if (!available) return;
+  it('should allow requests after release (sliding-window)', async (ctx) => {
+    if (!available) return ctx.skip();
     const key = 'cc:sw:key1';
     await store.reset(key);
 
@@ -255,8 +259,8 @@ describe('RedisStore — maxConcurrent', () => {
 // ---------------------------------------------------------------------------
 
 describe('RedisStore — getState', () => {
-  it('should return correct state for a new sliding-window key', async () => {
-    if (!available) return;
+  it('should return correct state for a new sliding-window key', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('gs:key1');
     const config = { algorithm: 'sliding-window' as const, limit: 5, windowSeconds: 60 };
     const state = await store.getState('gs:key1', config);
@@ -266,8 +270,8 @@ describe('RedisStore — getState', () => {
     expect(state.resetAt).toBeGreaterThan(0);
   });
 
-  it('should reflect usage after acquires for sliding-window', async () => {
-    if (!available) return;
+  it('should reflect usage after acquires for sliding-window', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('gs:key2');
     const config = { algorithm: 'sliding-window' as const, limit: 5, windowSeconds: 60 };
     await store.acquire('gs:key2', config);
@@ -279,8 +283,8 @@ describe('RedisStore — getState', () => {
     expect(state.allowed).toBe(true);
   });
 
-  it('should reflect blocked state when limit reached for sliding-window', async () => {
-    if (!available) return;
+  it('should reflect blocked state when limit reached for sliding-window', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('gs:key3');
     const config = { algorithm: 'sliding-window' as const, limit: 2, windowSeconds: 60 };
     await store.acquire('gs:key3', config);
@@ -292,8 +296,8 @@ describe('RedisStore — getState', () => {
     expect(state.currentUsage).toBe(2);
   });
 
-  it('should return correct state for a new token-bucket key', async () => {
-    if (!available) return;
+  it('should return correct state for a new token-bucket key', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('gs:tb1');
     const config = { algorithm: 'token-bucket' as const, ratePerSecond: 2 };
     const state = await store.getState('gs:tb1', config);
@@ -303,8 +307,8 @@ describe('RedisStore — getState', () => {
     expect(state.resetAt).toBeGreaterThan(0);
   });
 
-  it('should reflect blocked state after token-bucket acquire', async () => {
-    if (!available) return;
+  it('should reflect blocked state after token-bucket acquire', async (ctx) => {
+    if (!available) return ctx.skip();
     await store.reset('gs:tb2');
     const config = { algorithm: 'token-bucket' as const, ratePerSecond: 1 };
     await store.acquire('gs:tb2', config);

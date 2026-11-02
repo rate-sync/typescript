@@ -181,7 +181,10 @@ export class IORedisStore implements RateLimitStore {
   }
 
   private requireClient(): Redis & CommandRunner {
-    if (!this.client) {
+    // An externally supplied client is set at construction, but its Lua commands are only defined
+    // by initialize(): without that call the first command would fail with an obscure
+    // "is not a function" instead of this message.
+    if (!this.client || !this.commandsRegistered) {
       throw new Error('IORedisStore not initialized. Call initialize() first.');
     }
     return this.client as Redis & CommandRunner;

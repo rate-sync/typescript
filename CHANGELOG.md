@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   down, retried at most once per second. Same name and meaning as `ratesync.get_keyed_limiter` in
   the Python package, where the per-identifier clone pattern also leaked one connection pool per
   identifier (the TypeScript stores are shared, so only the registry grew here).
+- Tag-triggered publish workflow (`.github/workflows/publish.yml`): tests against a real Redis,
+  builds, and publishes with `npm publish --provenance --access public`; `RELEASING.md` documents
+  it. This is the first release published to npm.
 
 ### Changed
 
@@ -25,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `IORedisStore` built with an externally supplied client no longer accepts `acquire()` before
+  `initialize()`. The Lua commands are only defined by `initialize()`, so the call used to fail
+  with an obscure "is not a function" (or, when another store had already defined them on the
+  shared client, silently work); it now throws `IORedisStore not initialized`.
+- The Redis store tests that need a server no longer pass silently when none is reachable: they
+  are reported as skipped, and CI runs them against a Redis service. One of them asserted a
+  concurrency-only refusal while the rate gate (checked first) could still apply; it now waits for
+  the rate interval so the assertion exercises `maxConcurrent` alone.
 - `failClosed` is now actually enforced by `RateLimiter` itself. Previously the option was
   stored on the instance and exposed via the `failClosed` getter, but `initialize()`,
   `acquire()`, `tryAcquire()`, `release()`, `checkLimit()`, and `getState()` never caught
