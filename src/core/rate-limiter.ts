@@ -127,6 +127,34 @@ export class RateLimiter {
     await this._initPromise;
   }
 
+  /**
+   * Return a limiter for one key that shares this limiter's store (and so its connection).
+   *
+   * The returned limiter has the id `"{this.groupId}:{identifier}"` and this limiter's
+   * configuration. It is ready to use when this limiter is initialized (or degraded), and it has
+   * its own metrics. Nothing is registered. Prefer `getKeyedLimiter`, which also initializes the
+   * base limiter.
+   *
+   * @param identifier - The per-caller key (user id, client address, tenant, hash)
+   */
+  forKey(identifier: string): RateLimiter {
+    const view = new RateLimiter({
+      id: `${this._id}:${identifier}`,
+      store: this._store,
+      storeId: this._storeId,
+      algorithm: this._algorithm,
+      ratePerSecond: this._ratePerSecond ?? undefined,
+      maxConcurrent: this._maxConcurrent ?? undefined,
+      limit: this._limit ?? undefined,
+      windowSeconds: this._windowSeconds ?? undefined,
+      timeout: this._timeout ?? undefined,
+      failClosed: this._failClosed,
+    });
+    view._initialized = this._initialized;
+    view._degraded = this._degraded;
+    return view;
+  }
+
   // ---- Internal helpers -----------------------------------------------------
 
   private _buildAcquireConfig(): AcquireConfig {

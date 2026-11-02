@@ -5,6 +5,9 @@ import { LimiterNotFoundError, RateLimiterAlreadyConfiguredError, StoreNotFoundE
 import type { RateLimitStore } from '../engines/base.js';
 import { RateLimiter } from './rate-limiter.js';
 
+/** After a failed initialization, wait this long before trying the store again. */
+const KEYED_REINITIALIZE_AFTER_MS = 1000;
+
 // ---------------------------------------------------------------------------
 // Registry class (singleton via globalThis)
 // ---------------------------------------------------------------------------
@@ -12,6 +15,8 @@ import { RateLimiter } from './rate-limiter.js';
 class Registry {
   private stores = new Map<string, RateLimitStore>();
   private limiters = new Map<string, RateLimiter>();
+  /** Per base limiter: when the next initialization attempt may run, and the last failure. */
+  private keyedInit = new Map<string, { retryAt: number; error: unknown }>();
 
   // ---- Stores ---------------------------------------------------------------
 
@@ -119,6 +124,36 @@ class Registry {
     }
     this.cloneLimiter(baseId, newId);
     return this.getLimiter(newId);
+  }
+
+  /**
+   * The limiter for one key under a configured limiter, with nothing registered per key.
+   * The base limiter is initialized once; during an outage it is retried at most once per
+   * `KEYED_REINITIALIZE_AFTER_MS`.
+   */
+  async getKeyedLimiter(baseId: string, identifier: string): Promise<RateLimiter> {
+    const base = this.getLimiter(baseId);
+    if (!base.isInitialized) {
+      const pending = this.keyedInit.get(baseId);
+      if (pending && Date.now() < pending.retryAt) {
+        if (pending.error !== undefined) throw pending.error;
+      } else {
+        try {
+          await base.initialize();
+          this.keyedInit.set(baseId, {
+            retryAt: base.isInitialized ? 0 : Date.now() + KEYED_REINITIALIZE_AFTER_MS,
+            error: undefined,
+          });
+        } catch (error: unknown) {
+          this.keyedInit.set(baseId, {
+            retryAt: Date.now() + KEYED_REINITIALIZE_AFTER_MS,
+            error,
+          });
+          throw error;
+        }
+      }
+    }
+    return base.forKey(identifier);
   }
 
   listLimiters(): string[] {
@@ -250,7 +285,12 @@ export function cloneLimiter(baseId: string, newId: string): void {
 
 /**
  * Return an existing limiter by `newId`, or clone it from `baseId` if it doesn't exist yet.
- * Idempotent — safe to call on every request for per-user / per-tenant scenarios.
+ * Idempotent — safe to call on every request.
+ *
+ * The clone is registered under `newId` for the life of the process. That is right for a small,
+ * fixed set of named limiters. For values supplied by callers (user ids, client addresses,
+ * e-mails) use `getKeyedLimiter`, which registers nothing, so the registry does not grow with
+ * the number of distinct callers.
  *
  * @param baseId - The ID of the limiter to use as the clone source
  * @param newId - The ID to look up or create
@@ -259,6 +299,35 @@ export function cloneLimiter(baseId: string, newId: string): void {
  */
 export function getOrCloneLimiter(baseId: string, newId: string): RateLimiter {
   return getRegistry().getOrCloneLimiter(baseId, newId);
+}
+
+/**
+ * The limiter for one caller-supplied value (user, client address, e-mail, tenant, token hash)
+ * under a configured limiter. **Use this for any per-caller limit.**
+ *
+ * The identifier is only a key: the returned limiter shares the base limiter's store (and so its
+ * Redis connection), has the id `"{baseId}:{identifier}"` and the base's configuration, and
+ * nothing is registered per identifier, so neither connections nor the registry grow with the
+ * number of distinct callers. The store key is the one a registered clone with that id uses.
+ * The returned object is cheap and may be short-lived: call this on every request instead of
+ * keeping it. Its metrics cover that object only.
+ *
+ * Unlike `getOrCloneLimiter` it does not look for a limiter registered as `"{baseId}:{identifier}"`.
+ *
+ * @example
+ * ```typescript
+ * const limiter = await getKeyedLimiter('login', clientIp);
+ * if (!(await limiter.tryAcquire())) throw new TooManyRequests();
+ * ```
+ *
+ * @param baseId - The configured limiter to key
+ * @param identifier - The per-caller key. Any string
+ * @returns An initialized limiter for the identifier
+ * @throws {LimiterNotFoundError} If `baseId` does not exist
+ * @throws {RateLimiterAcquisitionError} If the store is down and the base has `failClosed: true`
+ */
+export async function getKeyedLimiter(baseId: string, identifier: string): Promise<RateLimiter> {
+  return getRegistry().getKeyedLimiter(baseId, identifier);
 }
 
 /**

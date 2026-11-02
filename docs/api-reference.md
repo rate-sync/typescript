@@ -184,9 +184,36 @@ cloneLimiter('public-api', `public-api:${userId}`);
 
 ---
 
+### getKeyedLimiter
+
+The limiter for one caller-supplied value (user, client address, e-mail, tenant, token hash) under a configured limiter. **Use this for any per-caller limit.**
+
+The identifier is only a key. The returned limiter shares the base limiter's store (and so its Redis connection), has the id `{baseId}:{identifier}` and the base's configuration, and nothing is registered per identifier, so neither connections nor the registry grow with the number of distinct callers. The store key is the one a registered clone with that id uses. The base limiter is initialized once; when the store is down it is retried at most once per second.
+
+```typescript
+async function getKeyedLimiter(baseId: string, identifier: string): Promise<RateLimiter>
+```
+
+**Throws:** `LimiterNotFoundError`, `RateLimiterAcquisitionError` (store down and the base has `failClosed: true`)
+
+The returned object is cheap and may be short-lived: call the function on every request instead of keeping it. Its `getMetrics()` covers that object only. It does not look for a limiter registered as `{baseId}:{identifier}`.
+
+```typescript
+import { getKeyedLimiter } from 'rate-sync';
+
+const limiter = await getKeyedLimiter('public-api', userId);
+if (!(await limiter.tryAcquire())) {
+  throw new Error('Rate limited');
+}
+```
+
+The Python package has the same function with the same name (`ratesync.get_keyed_limiter`).
+
+---
+
 ### getOrCloneLimiter
 
-Get an existing limiter or create a clone if it does not yet exist. Returns a limiter with ID `newId`, cloned from `baseId` on first call and reused on subsequent calls.
+Get an existing limiter or create a clone if it does not yet exist. Returns a limiter with ID `newId`, cloned from `baseId` on first call and reused on subsequent calls. The clone is registered for the life of the process: use it for a small, fixed set of named limiters, and [`getKeyedLimiter`](#getkeyedlimiter) for values supplied by callers.
 
 ```typescript
 function getOrCloneLimiter(baseId: string, newId: string): RateLimiter

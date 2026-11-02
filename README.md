@@ -28,11 +28,10 @@ configureLimiter('auth_credential', {
 
 ### Different API quotas for free, pro, and enterprise customers
 
-Your free tier gets 100 requests/hour. Pro gets 1,000. Enterprise gets 10,000. Define each tier as a limiter and clone it per user — rate-sync handles the rest.
+Your free tier gets 100 requests/hour. Pro gets 1,000. Enterprise gets 10,000. Define each tier as a limiter and key it per user. rate-sync handles the rest.
 
 ```typescript
-const limiter = getOrCloneLimiter(`api_${tier}`, apiKey);
-await limiter.initialize();
+const limiter = await getKeyedLimiter(`api_${tier}`, apiKey);
 ```
 
 > **Deep dive:** [API Tiering](https://github.com/rate-sync/typescript/blob/main/docs/patterns/api-tiering.md)
@@ -42,10 +41,9 @@ await limiter.initialize();
 In multi-tenant systems, a single noisy tenant can starve everyone else. Per-tenant rate limiting enforces fair usage — each tenant gets their share, and no one can monopolize your infrastructure.
 
 ```typescript
-import { getOrCloneLimiter } from 'rate-sync';
+import { getKeyedLimiter } from 'rate-sync';
 
-const limiter = getOrCloneLimiter('platform_api', `tenant:${tenantId}`);
-await limiter.initialize();
+const limiter = await getKeyedLimiter('platform_api', tenantId);
 await limiter.acquire();
 ```
 
@@ -54,7 +52,7 @@ await limiter.acquire();
 Your platform sends webhooks to customer URLs. A bulk import triggers 10,000 events, and suddenly you're DDoS-ing your own customers. Per-endpoint rate limiting with automatic retries keeps delivery smooth without overwhelming anyone.
 
 ```typescript
-const limiter = getOrCloneLimiter('webhook_endpoint', endpointUrl);
+const limiter = await getKeyedLimiter('webhook_endpoint', endpointUrl);
 await limiter.using(async () => {
   await fetch(endpointUrl, { method: 'POST', body: JSON.stringify(payload) });
 });
@@ -219,11 +217,10 @@ await acquire('public-api');
 ### Per-User / Per-Tenant Limits
 
 ```typescript
-import { getOrCloneLimiter } from 'rate-sync';
+import { getKeyedLimiter } from 'rate-sync';
 
-// Clone the base limiter config for each tenant
-const limiter = getOrCloneLimiter('public-api', `tenant:${tenantId}`);
-await limiter.initialize();
+// Key the base limiter by tenant: one shared store connection, nothing registered per tenant
+const limiter = await getKeyedLimiter('public-api', tenantId);
 
 const result = await limiter.checkLimit(userId);
 if (!result.allowed) {

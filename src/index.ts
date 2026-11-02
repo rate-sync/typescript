@@ -4,7 +4,7 @@ export type { RateLimiterOptions } from './core/rate-limiter.js';
 
 // Registry functions
 export {
-  configureStore, configureLimiter, getLimiter, getStore, cloneLimiter, getOrCloneLimiter,
+  configureStore, configureLimiter, getLimiter, getStore, cloneLimiter, getOrCloneLimiter, getKeyedLimiter,
   listStores, listLimiters, acquire, initializeLimiter, initializeAllLimiters,
   checkLimiter, checkMultiLimiters, closeAll,
 } from './core/registry.js';
