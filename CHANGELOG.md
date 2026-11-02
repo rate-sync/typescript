@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-11-02
+
+### Fixed
+
+- A token-bucket limiter without `ratePerSecond` (only `maxConcurrent`) is no longer capped at 1
+  request per second. The memory, node-redis and ioredis stores treated a missing `ratePerSecond`
+  as 1, so a concurrency-only limiter admitted one request a second. A missing (or zero or
+  negative) rate now means no rate gate, as in the Python package, and `maxConcurrent` is the only
+  limit. An explicit `ratePerSecond` limits as before. Documented in `docs/configuration.md`
+  ("At least one of `ratePerSecond` or `maxConcurrent` required").
+- The memory store now enforces `maxConcurrent` (token bucket and sliding window) and implements
+  `release()`; it used to ignore both, so a memory-backed limiter with `maxConcurrent` limited
+  nothing. Slots are held until `release()` (or `using()`), exactly like the Redis stores, so code
+  that sets `maxConcurrent` on a memory store must release what it acquires.
+- `RateLimiter.checkLimit()` (used by the Next.js `withRateLimit` and `withRateLimitAction`) no
+  longer leaks a concurrency slot per call. On a Redis store with `maxConcurrent` every check took
+  a slot that nothing released, so after `maxConcurrent` calls the key was refused forever. A check
+  now gives the slot back right away (it still refuses while all slots are held).
+- `getState()` of a token bucket reports the free concurrency slots (`remaining`, `currentUsage`)
+  in every store; `checkLimit()` reports `limit` as `maxConcurrent` for a concurrency-only limiter.
+
 ## [0.2.2] - 2026-11-02
 
 ### Changed

@@ -67,6 +67,12 @@ configureLimiter('public-api', {
 });
 ```
 
+With `maxConcurrent` the memory store also caps in-flight requests per key (free a slot with `release()`, or use `using()`). A limiter with `maxConcurrent` and no `ratePerSecond` has no rate gate:
+
+```typescript
+configureLimiter('uploads', { store: 'local', maxConcurrent: 3 }); // up to 3 at once
+```
+
 ### Sliding Window
 
 Counts requests in a time window:

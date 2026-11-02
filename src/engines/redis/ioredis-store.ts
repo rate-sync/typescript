@@ -1,5 +1,6 @@
 import type Redis from 'ioredis';
 import { TOKEN_BUCKET_SCRIPT, SLIDING_WINDOW_SCRIPT, RELEASE_SCRIPT } from './scripts.js';
+import { intervalSeconds } from '../base.js';
 import type { RateLimitStore, AcquireConfig, AcquireResult } from '../base.js';
 import type { LimiterState } from '../../core/schemas.js';
 
@@ -88,8 +89,8 @@ export class IORedisStore implements RateLimitStore {
     const client = this.requireClient();
     const now = Date.now() / 1000;
     if (config.algorithm === 'token-bucket') {
-      const ratePerSecond = config.ratePerSecond ?? 1;
-      const interval = 1 / ratePerSecond;
+      // No ratePerSecond means no rate gate (interval 0 disables it in the script).
+      const interval = intervalSeconds(config.ratePerSecond);
       const maxConcurrent = config.maxConcurrent ?? 0;
       const ttl = Math.max(2, Math.ceil(interval) + 1);
       const raw = await client.rsTokenBucket(
@@ -127,21 +128,29 @@ export class IORedisStore implements RateLimitStore {
     const client = this.requireClient();
     const now = Date.now() / 1000;
     if (config.algorithm === 'token-bucket') {
-      const ratePerSecond = config.ratePerSecond ?? 1;
-      const interval = 1 / ratePerSecond;
-      const lastTimeStr = await client.get(this.rateKey(key));
-      if (lastTimeStr === null) {
-        return { allowed: true, remaining: 1, resetAt: Math.floor(now + interval), currentUsage: 0 };
+      const interval = intervalSeconds(config.ratePerSecond);
+      const maxConcurrent = config.maxConcurrent ?? 0;
+      let allowed = true;
+      let resetAt = Math.floor(now + (interval > 0 ? interval : 1));
+      if (interval > 0) {
+        const lastTimeStr = await client.get(this.rateKey(key));
+        if (lastTimeStr !== null) {
+          const lastTime = parseFloat(lastTimeStr);
+          allowed = now - lastTime >= interval;
+          resetAt = Math.floor(lastTime + interval);
+        }
       }
-      const lastTime = parseFloat(lastTimeStr);
-      const elapsed = now - lastTime;
-      const allowed = elapsed >= interval;
-      return {
-        allowed,
-        remaining: allowed ? 1 : 0,
-        resetAt: Math.floor(lastTime + interval),
-        currentUsage: allowed ? 0 : 1,
-      };
+      let remaining = allowed ? 1 : 0;
+      let currentUsage = allowed ? 0 : 1;
+      if (maxConcurrent > 0) {
+        const raw = await client.get(this.concurrentKey(key));
+        const concurrent = raw === null ? 0 : Math.max(0, parseInt(raw, 10) || 0);
+        if (concurrent >= maxConcurrent) allowed = false;
+        remaining = interval > 0 ? Math.min(remaining, maxConcurrent - concurrent) : maxConcurrent - concurrent;
+        remaining = Math.max(0, remaining);
+        currentUsage = Math.max(currentUsage, concurrent);
+      }
+      return { allowed, remaining, resetAt, currentUsage };
     }
     const limit = config.limit ?? 1;
     const windowSeconds = config.windowSeconds ?? 60;

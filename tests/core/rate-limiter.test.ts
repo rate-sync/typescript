@@ -654,4 +654,60 @@ describe('RateLimiter', () => {
       });
     });
   });
+
+  // --------------------------------------------------------------------------
+  // Concurrency-only limiter (maxConcurrent without ratePerSecond)
+  // --------------------------------------------------------------------------
+
+  describe('concurrency-only limiter', () => {
+    it('admits a burst up to maxConcurrent, refuses beyond it, and frees a slot on release', async () => {
+      const limiter = makeLimiter({ ratePerSecond: undefined, maxConcurrent: 3 });
+      await limiter.initialize();
+
+      expect(await limiter.tryAcquire()).toBe(true);
+      expect(await limiter.tryAcquire()).toBe(true);
+      expect(await limiter.tryAcquire()).toBe(true);
+      expect(await limiter.tryAcquire()).toBe(false);
+
+      await limiter.release();
+      expect(await limiter.tryAcquire()).toBe(true);
+    });
+
+    it('using() takes and gives back a slot', async () => {
+      const limiter = makeLimiter({ ratePerSecond: undefined, maxConcurrent: 1 });
+      await limiter.initialize();
+
+      await limiter.using(async () => {
+        expect(await limiter.tryAcquire()).toBe(false);
+      });
+
+      expect(await limiter.tryAcquire()).toBe(true);
+    });
+
+    it('an explicit ratePerSecond still limits', async () => {
+      const limiter = makeLimiter({ ratePerSecond: 1, maxConcurrent: 5 });
+      await limiter.initialize();
+
+      expect(await limiter.tryAcquire()).toBe(true);
+      expect(await limiter.tryAcquire()).toBe(false);
+    });
+
+    it('checkLimit does not leak concurrency slots (it is a momentary check, not a held slot)', async () => {
+      const limiter = makeLimiter({ ratePerSecond: undefined, maxConcurrent: 2 });
+      await limiter.initialize();
+
+      for (let i = 0; i < 20; i++) {
+        const result = await limiter.checkLimit('user-1');
+        expect(result.allowed).toBe(true);
+      }
+    });
+
+    it('checkLimit still reports a taken slot as refused while the slots are held', async () => {
+      const limiter = makeLimiter({ ratePerSecond: undefined, maxConcurrent: 1 });
+      await limiter.initialize();
+      expect(await limiter.tryAcquire()).toBe(true); // holds the only slot of key "test-limiter"
+
+      expect((await limiter.checkLimit()).allowed).toBe(false);
+    });
+  });
 });

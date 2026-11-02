@@ -1,3 +1,4 @@
+import { intervalSeconds } from '../base.js';
 import type { AcquireConfig, AcquireResult, RateLimitStore } from '../base.js';
 import type { LimiterState } from '../../core/schemas.js';
 
@@ -40,6 +41,8 @@ type KeyState = TokenBucketState | SlidingWindowState;
 export class MemoryStore implements RateLimitStore {
   private tokenBuckets = new Map<string, TokenBucketState>();
   private slidingWindows = new Map<string, SlidingWindowState>();
+  /** In-flight slots per key, for `maxConcurrent` (released with `release()`). */
+  private concurrent = new Map<string, number>();
 
   // ---- Lifecycle -----------------------------------------------------------
 
@@ -50,22 +53,43 @@ export class MemoryStore implements RateLimitStore {
   async close(): Promise<void> {
     this.tokenBuckets.clear();
     this.slidingWindows.clear();
+    this.concurrent.clear();
   }
 
   // ---- Core operations -----------------------------------------------------
 
   async acquire(key: string, config: AcquireConfig): Promise<AcquireResult> {
-    if (config.algorithm === 'token-bucket') {
-      return this._acquireTokenBucket(key, config);
+    const maxConcurrent = config.maxConcurrent ?? 0;
+    const concurrent = this.concurrent.get(key) ?? 0;
+
+    if (maxConcurrent > 0 && concurrent >= maxConcurrent) {
+      // Every slot is taken. Nothing is recorded. As in the Redis script, a rate wait wins over a
+      // concurrency refusal; a pure concurrency refusal has waitMs 0 (the caller has to wait for
+      // a release, there is no time to wait for).
+      return { success: false, waitMs: this._rateWaitMs(key, config), concurrentCount: concurrent };
     }
-    return this._acquireSlidingWindow(key, config);
+
+    const result =
+      config.algorithm === 'token-bucket'
+        ? this._acquireTokenBucket(key, config)
+        : this._acquireSlidingWindow(key, config);
+
+    if (result.success && maxConcurrent > 0) {
+      const count = (this.concurrent.get(key) ?? 0) + 1;
+      this.concurrent.set(key, count);
+      return { ...result, concurrentCount: count };
+    }
+    return result;
   }
 
-  /**
-   * No-op for P0. Concurrency limiting (maxConcurrent) is a P1 feature.
-   */
-  async release(_key: string): Promise<void> {
-    // no-op
+  /** Free one concurrency slot of `key` (a no-op when none is held). */
+  async release(key: string): Promise<void> {
+    const count = this.concurrent.get(key) ?? 0;
+    if (count <= 1) {
+      this.concurrent.delete(key);
+    } else {
+      this.concurrent.set(key, count - 1);
+    }
   }
 
   async getState(key: string, config: AcquireConfig): Promise<LimiterState> {
@@ -82,17 +106,34 @@ export class MemoryStore implements RateLimitStore {
     this.slidingWindows.delete(key);
   }
 
+  /** Milliseconds until the rate (or window) gate would admit `key`; 0 if it would now. Read-only. */
+  private _rateWaitMs(key: string, config: AcquireConfig): number {
+    const now = Date.now() / 1000;
+    if (config.algorithm === 'token-bucket') {
+      const interval = intervalSeconds(config.ratePerSecond);
+      const state = this.tokenBuckets.get(key);
+      if (interval === 0 || state === undefined) return 0;
+      const elapsed = now - state.lastTimestamp;
+      return elapsed < interval ? Math.ceil((interval - elapsed) * 1000) : 0;
+    }
+    const limit = config.limit ?? 1;
+    const windowSeconds = config.windowSeconds ?? 60;
+    if (limit <= 0 || windowSeconds <= 0) return 0;
+    const active = (this.slidingWindows.get(key)?.timestamps ?? []).filter((ts) => ts > now - windowSeconds);
+    if (active.length < limit) return 0;
+    return Math.max(1, Math.ceil((active[0]! + windowSeconds - now) * 1000));
+  }
+
   // ---- Token Bucket --------------------------------------------------------
 
   private _acquireTokenBucket(key: string, config: AcquireConfig): AcquireResult {
-    const ratePerSecond = config.ratePerSecond ?? 1;
+    const interval = intervalSeconds(config.ratePerSecond); // seconds between allowed requests
 
-    // Guard: zero or negative rate means no limiting — allow all
-    if (ratePerSecond <= 0) {
+    // No ratePerSecond (a concurrency-only limiter) or a zero or negative rate: no rate gate
+    if (interval === 0) {
       return { success: true, waitMs: 0 };
     }
 
-    const interval = 1 / ratePerSecond; // seconds between allowed requests
     const now = Date.now() / 1000;
 
     const state = this.tokenBuckets.get(key);
@@ -112,28 +153,27 @@ export class MemoryStore implements RateLimitStore {
   }
 
   private _getTokenBucketState(key: string, config: AcquireConfig, now: number): LimiterState {
-    const ratePerSecond = config.ratePerSecond ?? 1;
-    const interval = 1 / ratePerSecond;
-
+    const interval = intervalSeconds(config.ratePerSecond);
+    const maxConcurrent = config.maxConcurrent ?? 0;
     const state = this.tokenBuckets.get(key);
-    if (state === undefined) {
-      // Key has never been used — next request will succeed
-      return {
-        allowed: true,
-        remaining: 1,
-        resetAt: Math.floor(now + interval),
-        currentUsage: 0,
-      };
+
+    let allowed = true;
+    let resetAt = Math.floor(now + (interval > 0 ? interval : 1));
+    if (interval > 0 && state !== undefined) {
+      allowed = now - state.lastTimestamp >= interval;
+      resetAt = Math.floor(state.lastTimestamp + interval);
     }
 
-    const elapsed = now - state.lastTimestamp;
-    const allowed = elapsed >= interval;
-    return {
-      allowed,
-      remaining: allowed ? 1 : 0,
-      resetAt: Math.floor(state.lastTimestamp + interval),
-      currentUsage: allowed ? 0 : 1,
-    };
+    let remaining = allowed ? 1 : 0;
+    let currentUsage = allowed ? 0 : 1;
+    if (maxConcurrent > 0) {
+      const concurrent = this.concurrent.get(key) ?? 0;
+      if (concurrent >= maxConcurrent) allowed = false;
+      remaining = Math.max(0, interval > 0 ? Math.min(remaining, maxConcurrent - concurrent) : maxConcurrent - concurrent);
+      currentUsage = Math.max(currentUsage, concurrent);
+    }
+
+    return { allowed, remaining, resetAt, currentUsage };
   }
 
   // ---- Sliding Window ------------------------------------------------------

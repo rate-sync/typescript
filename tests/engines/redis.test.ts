@@ -319,3 +319,23 @@ describe('RedisStore — getState', () => {
     expect(state.currentUsage).toBe(1);
   });
 });
+
+describe('RedisStore: RateLimiter.checkLimit with maxConcurrent', () => {
+  it('does not leak concurrency slots', async (ctx) => {
+    if (!available) return ctx.skip();
+    const { RateLimiter } = await import('../../src/core/rate-limiter.js');
+    const limiter = new RateLimiter({
+      id: `cl-${Math.random().toString(36).slice(2, 8)}`,
+      store,
+      storeId: 'test',
+      algorithm: 'token-bucket',
+      maxConcurrent: 2,
+    });
+    await limiter.initialize();
+
+    for (let i = 0; i < 10; i++) {
+      expect((await limiter.checkLimit('user-1')).allowed).toBe(true);
+    }
+    await store.reset(`${limiter.groupId}:user-1`);
+  });
+});

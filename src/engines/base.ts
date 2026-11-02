@@ -16,6 +16,17 @@ export interface AcquireConfig {
 }
 
 /**
+ * Seconds between two allowed requests of a token bucket, or `0` when there is no rate gate.
+ *
+ * A token bucket without `ratePerSecond` (a concurrency-only limiter, `maxConcurrent` alone)
+ * has no rate gate, as in the Python package; a zero or negative rate means the same. Only an
+ * explicit positive rate limits throughput.
+ */
+export function intervalSeconds(ratePerSecond: number | undefined): number {
+  return ratePerSecond !== undefined && ratePerSecond > 0 ? 1 / ratePerSecond : 0;
+}
+
+/**
  * Raw result returned by a store's acquire() call.
  *
  * The RateLimiter layer converts this into a RateLimitResult before

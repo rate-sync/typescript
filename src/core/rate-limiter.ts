@@ -210,7 +210,9 @@ export class RateLimiter {
 
   private _permissiveRateLimitResult(): RateLimitResult {
     const limit =
-      this._algorithm === 'sliding-window' ? (this._limit ?? 1) : (this._ratePerSecond ?? 1);
+      this._algorithm === 'sliding-window'
+        ? (this._limit ?? 1)
+        : (this._ratePerSecond ?? this._maxConcurrent ?? 1);
     return createRateLimitResult({
       allowed: true,
       limit,
@@ -372,7 +374,8 @@ export class RateLimiter {
   // ---- Check (rate-limit by identifier) ------------------------------------
 
   /**
-   * Checks and consumes a rate-limit slot for a given identifier.
+   * Checks and consumes a rate-limit slot for a given identifier. A concurrency slot, if the
+   * limiter has `maxConcurrent`, is checked but not held: it is released right away.
    * key = identifier ? `${id}:${identifier}` : id
    *
    * In degraded fail-open mode (initialize() failed with failClosed=false),
@@ -399,11 +402,21 @@ export class RateLimiter {
       return this._permissiveRateLimitResult();
     }
 
+    // checkLimit is a momentary admission check, not a held slot: nothing would ever release the
+    // concurrency slot it took, so give it back right away (it still refused when all were held).
+    if (result.success && this._maxConcurrent !== null) {
+      try {
+        await this._store.release(key);
+      } catch (error: unknown) {
+        this._handleBackendFailure(error);
+      }
+    }
+
     // Derive limit and remaining from config fields
     const limit =
       this._algorithm === 'sliding-window'
         ? (this._limit ?? 1)
-        : (this._ratePerSecond ?? 1);
+        : (this._ratePerSecond ?? this._maxConcurrent ?? 1);
 
     const remaining = result.success
       ? Math.max(0, limit - (result.currentCount ?? 1))

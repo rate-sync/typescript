@@ -130,7 +130,7 @@ await configureStore('prod', {
 | `ratePerSecond` | `number` | `undefined` | Max operations/sec |
 | `maxConcurrent` | `number` | `undefined` | Max simultaneous ops |
 
-At least one of `ratePerSecond` or `maxConcurrent` required.
+At least one of `ratePerSecond` or `maxConcurrent` required. A limiter with only `maxConcurrent` has no rate gate (same as the Python package): it admits requests up to `maxConcurrent` in flight at once and refuses the next until one is released with `release()` (or use `using()`). Setting `ratePerSecond` adds a throughput limit on top. `checkLimit()` (and so the Next.js helpers) checks the concurrency ceiling but does not hold a slot.
 
 ```typescript
 configureLimiter('public-api', {
