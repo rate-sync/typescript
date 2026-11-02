@@ -1,6 +1,6 @@
 {
   "name": "@rate-sync/rate-sync",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Distributed rate limiting for TypeScript — token bucket, sliding window, Redis/Memory backends with Next.js integration",
   "type": "module",
   "packageManager": "pnpm@10.32.1",

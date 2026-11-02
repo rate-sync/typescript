@@ -14,9 +14,10 @@ settings, section Trusted Publisher, choose GitHub Actions and enter owner `rate
 repository `typescript` and workflow file `publish.yml`. Leave the environment empty and leave the
 `NPM_TOKEN` repository secret unset. npm only allows this once the package exists.
 
-First publish only: a short-lived automation token with publish rights, stored as the repository
-secret `NPM_TOKEN`. Delete the secret and revoke the token right after the first publish, then
-configure Trusted Publishing.
+Done for this package: `0.2.1` was published with a short-lived token (deleted afterwards) and
+Trusted Publishing is configured for `rate-sync/typescript`, workflow `publish.yml`, so releases
+need no secret. If the configuration ever has to be recreated, it needs the security key of the npm
+account owner.
 
 ## Release checklist
 
