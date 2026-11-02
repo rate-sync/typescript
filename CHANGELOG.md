@@ -5,7 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-11-02
+
+### Added
+
+- `getKeyedLimiter(baseId, identifier)` and `RateLimiter.forKey(identifier)`: the limiter for one
+  caller-supplied value (user, client address, e-mail, tenant, token hash) with the id
+  `"{baseId}:{identifier}"`, sharing the base limiter's store and registering nothing, so the
+  registry does not grow with the number of distinct callers. The store key is the one a
+  registered clone with that id uses. The base limiter is initialized once and, when the store is
+  down, retried at most once per second. Same name and meaning as `ratesync.get_keyed_limiter` in
+  the Python package, where the per-identifier clone pattern also leaked one connection pool per
+  identifier (the TypeScript stores are shared, so only the registry grew here).
+
+### Changed
+
+- `cloneLimiter` and `getOrCloneLimiter` keep their contract (they register) and now document that
+  they are for a small fixed set of named limiters, not for values supplied by callers.
 
 ### Fixed
 
