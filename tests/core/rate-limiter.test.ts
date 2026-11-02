@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RateLimiter } from '../../src/core/rate-limiter.js';
 import { MemoryStore } from '../../src/engines/memory/index.js';
-import { RateLimiterAcquisitionError, RateLimiterNotInitializedError } from '../../src/core/errors.js';
+import {
+  ConfigValidationError,
+  RateLimiterAcquisitionError,
+  RateLimiterNotInitializedError,
+} from '../../src/core/errors.js';
 import type { RateLimitStore } from '../../src/engines/base.js';
 
 function makeStore(): MemoryStore {
@@ -36,7 +40,8 @@ describe('RateLimiter', () => {
     });
 
     it('ratePerSecond returns null when not configured', () => {
-      const limiter = makeLimiter({ ratePerSecond: undefined });
+      // a token bucket needs a gate, so give it maxConcurrent instead of a rate
+      const limiter = makeLimiter({ ratePerSecond: undefined, maxConcurrent: 3 });
       expect(limiter.ratePerSecond).toBeNull();
     });
 
@@ -314,13 +319,20 @@ describe('RateLimiter', () => {
     });
 
     it('returns null for optional fields not set', () => {
-      const limiter = makeLimiter({ ratePerSecond: undefined });
-      const config = limiter.getConfig();
-      expect(config.ratePerSecond).toBeNull();
-      expect(config.maxConcurrent).toBeNull();
-      expect(config.limit).toBeNull();
-      expect(config.windowSeconds).toBeNull();
-      expect(config.timeout).toBeNull();
+      const bucket = makeLimiter().getConfig();
+      expect(bucket.maxConcurrent).toBeNull();
+      expect(bucket.limit).toBeNull();
+      expect(bucket.windowSeconds).toBeNull();
+      expect(bucket.timeout).toBeNull();
+
+      const window = makeLimiter({
+        algorithm: 'sliding-window',
+        ratePerSecond: undefined,
+        limit: 5,
+        windowSeconds: 60,
+      }).getConfig();
+      expect(window.ratePerSecond).toBeNull();
+      expect(window.maxConcurrent).toBeNull();
     });
   });
 
@@ -427,7 +439,12 @@ describe('RateLimiter', () => {
         reset: async () => {},
         close: async () => {},
       };
-      const limiter = new RateLimiter({ id: 'retry-test', store: mockStore as any, storeId: 'mock' });
+      const limiter = new RateLimiter({
+        id: 'retry-test',
+        store: mockStore as any,
+        storeId: 'mock',
+        ratePerSecond: 100,
+      });
       await limiter.initialize();
       await limiter.acquire();
       expect(mockStore.acquire).toHaveBeenCalledTimes(2);
@@ -708,6 +725,26 @@ describe('RateLimiter', () => {
       expect(await limiter.tryAcquire()).toBe(true); // holds the only slot of key "test-limiter"
 
       expect((await limiter.checkLimit()).allowed).toBe(false);
+    });
+
+    it('refuses to construct a token bucket with neither ratePerSecond nor maxConcurrent', () => {
+      expect(() => makeLimiter({ ratePerSecond: undefined, maxConcurrent: undefined })).toThrow(
+        ConfigValidationError,
+      );
+      expect(() => makeLimiter({ ratePerSecond: 0, maxConcurrent: undefined })).toThrow(
+        /ratePerSecond or maxConcurrent/,
+      );
+    });
+
+    it('does not apply that rule to sliding windows', () => {
+      expect(() =>
+        makeLimiter({
+          algorithm: 'sliding-window',
+          ratePerSecond: undefined,
+          limit: 5,
+          windowSeconds: 60,
+        }),
+      ).not.toThrow();
     });
   });
 });

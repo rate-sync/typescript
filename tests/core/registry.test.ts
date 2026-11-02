@@ -372,3 +372,16 @@ describe('closeAll', () => {
     expect(listLimiters()).toContain('lim2');
   });
 });
+
+describe('configureLimiter validation', () => {
+  it('rejects a token bucket with neither ratePerSecond nor maxConcurrent', async () => {
+    await configureStore('v-store', { engine: 'memory' });
+    expect(() => configureLimiter('bad', { store: 'v-store' })).toThrow(/ratePerSecond or maxConcurrent/);
+    expect(listLimiters()).not.toContain('bad');
+  });
+
+  it('accepts a concurrency-only token bucket', async () => {
+    await configureStore('v-store', { engine: 'memory' });
+    expect(() => configureLimiter('ok', { store: 'v-store', maxConcurrent: 2 })).not.toThrow();
+  });
+});

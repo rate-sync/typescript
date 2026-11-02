@@ -27,6 +27,27 @@ export function intervalSeconds(ratePerSecond: number | undefined): number {
 }
 
 /**
+ * Fail closed on a token-bucket config that has no gate at all.
+ *
+ * Without `ratePerSecond` the only gate is `maxConcurrent`. A token bucket with neither (or with
+ * a zero or negative rate and no `maxConcurrent`) would admit everything forever, silently, so it
+ * is refused instead. Sliding-window configs are not affected (they are gated by `limit`).
+ *
+ * @throws {Error} If the config is a token bucket with neither a positive rate nor a positive
+ * `maxConcurrent`
+ */
+export function assertTokenBucketHasGate(config: AcquireConfig): void {
+  if (config.algorithm !== 'token-bucket') return;
+  const hasRate = config.ratePerSecond !== undefined && config.ratePerSecond > 0;
+  const hasConcurrency = config.maxConcurrent !== undefined && config.maxConcurrent > 0;
+  if (!hasRate && !hasConcurrency) {
+    throw new Error(
+      'A token-bucket limiter needs ratePerSecond or maxConcurrent (a positive number); with neither it would not limit anything.',
+    );
+  }
+}
+
+/**
  * Raw result returned by a store's acquire() call.
  *
  * The RateLimiter layer converts this into a RateLimitResult before

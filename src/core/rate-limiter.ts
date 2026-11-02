@@ -7,7 +7,11 @@ import {
   type RateLimitResult,
   type RateLimiterMetrics,
 } from './schemas.js';
-import { RateLimiterAcquisitionError, RateLimiterNotInitializedError } from './errors.js';
+import {
+  ConfigValidationError,
+  RateLimiterAcquisitionError,
+  RateLimiterNotInitializedError,
+} from './errors.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -78,6 +82,20 @@ export class RateLimiter {
     this._windowSeconds = options.windowSeconds ?? null;
     this._timeout = options.timeout ?? null;
     this._failClosed = options.failClosed ?? false;
+    // A token bucket is gated by ratePerSecond, maxConcurrent or both. With neither it would
+    // admit everything forever, silently, so refuse it here instead of failing open.
+    if (
+      this._algorithm === 'token-bucket' &&
+      !(this._ratePerSecond !== null && this._ratePerSecond > 0) &&
+      !(this._maxConcurrent !== null && this._maxConcurrent > 0)
+    ) {
+      throw new ConfigValidationError(
+        `Limiter "${this._id}": a token-bucket limiter needs ratePerSecond or maxConcurrent (a positive number); with neither it would not limit anything.`,
+        'ratePerSecond',
+        'ratePerSecond or maxConcurrent',
+        'neither',
+      );
+    }
     this._metrics = createMetrics();
     this._acquireConfig = this._buildAcquireConfig();
   }

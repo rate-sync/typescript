@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer leaks a concurrency slot per call. On a Redis store with `maxConcurrent` every check took
   a slot that nothing released, so after `maxConcurrent` calls the key was refused forever. A check
   now gives the slot back right away (it still refuses while all slots are held).
+- A token bucket with neither `ratePerSecond` nor `maxConcurrent` is refused instead of becoming
+  unlimited. With the 1 req/s default gone such a configuration would admit everything forever
+  and silently, so `RateLimiter` throws `ConfigValidationError` at construction (so
+  `configureLimiter` and the TOML/`defineConfig` paths fail at startup), and the memory,
+  node-redis and ioredis stores throw on `acquire()` and `getState()` for the same config. A zero
+  or negative rate with no `maxConcurrent` is refused too. Sliding windows are not affected. The
+  Python engines already behave this way (`ValueError` at construction).
 - `getState()` of a token bucket reports the free concurrency slots (`remaining`, `currentUsage`)
   in every store; `checkLimit()` reports `limit` as `maxConcurrent` for a concurrency-only limiter.
 

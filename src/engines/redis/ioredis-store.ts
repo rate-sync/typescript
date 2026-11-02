@@ -1,6 +1,6 @@
 import type Redis from 'ioredis';
 import { TOKEN_BUCKET_SCRIPT, SLIDING_WINDOW_SCRIPT, RELEASE_SCRIPT } from './scripts.js';
-import { intervalSeconds } from '../base.js';
+import { assertTokenBucketHasGate, intervalSeconds } from '../base.js';
 import type { RateLimitStore, AcquireConfig, AcquireResult } from '../base.js';
 import type { LimiterState } from '../../core/schemas.js';
 
@@ -86,6 +86,7 @@ export class IORedisStore implements RateLimitStore {
   }
 
   async acquire(key: string, config: AcquireConfig): Promise<AcquireResult> {
+    assertTokenBucketHasGate(config);
     const client = this.requireClient();
     const now = Date.now() / 1000;
     if (config.algorithm === 'token-bucket') {
@@ -125,6 +126,7 @@ export class IORedisStore implements RateLimitStore {
   }
 
   async getState(key: string, config: AcquireConfig): Promise<LimiterState> {
+    assertTokenBucketHasGate(config);
     const client = this.requireClient();
     const now = Date.now() / 1000;
     if (config.algorithm === 'token-bucket') {

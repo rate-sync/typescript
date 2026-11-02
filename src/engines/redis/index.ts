@@ -1,6 +1,6 @@
 import { createClient, type RedisClientType } from 'redis';
 import { TOKEN_BUCKET_SCRIPT, SLIDING_WINDOW_SCRIPT, RELEASE_SCRIPT } from './scripts.js';
-import { intervalSeconds } from '../base.js';
+import { assertTokenBucketHasGate, intervalSeconds } from '../base.js';
 import type { RateLimitStore, AcquireConfig, AcquireResult } from '../base.js';
 import type { LimiterState } from '../../core/schemas.js';
 
@@ -89,6 +89,7 @@ export class RedisStore implements RateLimitStore {
   // ---------------------------------------------------------------------------
 
   async acquire(key: string, config: AcquireConfig): Promise<AcquireResult> {
+    assertTokenBucketHasGate(config);
     const client = this._getClient();
     const now = Date.now() / 1000; // seconds (float)
 
@@ -111,6 +112,7 @@ export class RedisStore implements RateLimitStore {
   }
 
   async getState(key: string, config: AcquireConfig): Promise<LimiterState> {
+    assertTokenBucketHasGate(config);
     const client = this._getClient();
     const now = Date.now() / 1000;
 

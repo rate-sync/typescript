@@ -199,5 +199,24 @@ for (const [name, factory] of storeFactories) {
       expect(state.remaining).toBe(2);
       expect(state.currentUsage).toBe(1);
     });
+
+    it('rejects a token-bucket config with neither ratePerSecond nor maxConcurrent', async () => {
+      const config = { algorithm: 'token-bucket' as const };
+      await expect(store.acquire('cc:neither', config)).rejects.toThrow(/ratePerSecond or maxConcurrent/);
+      await expect(store.getState('cc:neither', config)).rejects.toThrow(/ratePerSecond or maxConcurrent/);
+      // a zero rate with no maxConcurrent is not a gate either
+      await expect(
+        store.acquire('cc:zero', { algorithm: 'token-bucket' as const, ratePerSecond: 0 }),
+      ).rejects.toThrow(/ratePerSecond or maxConcurrent/);
+    });
+
+    it('leaves sliding-window configs untouched by that rule', async () => {
+      const result = await store.acquire('cc:sw-ok', {
+        algorithm: 'sliding-window' as const,
+        limit: 1,
+        windowSeconds: 60,
+      });
+      expect(result.success).toBe(true);
+    });
   });
 }

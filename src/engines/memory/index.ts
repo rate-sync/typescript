@@ -1,4 +1,4 @@
-import { intervalSeconds } from '../base.js';
+import { assertTokenBucketHasGate, intervalSeconds } from '../base.js';
 import type { AcquireConfig, AcquireResult, RateLimitStore } from '../base.js';
 import type { LimiterState } from '../../core/schemas.js';
 
@@ -59,6 +59,7 @@ export class MemoryStore implements RateLimitStore {
   // ---- Core operations -----------------------------------------------------
 
   async acquire(key: string, config: AcquireConfig): Promise<AcquireResult> {
+    assertTokenBucketHasGate(config);
     const maxConcurrent = config.maxConcurrent ?? 0;
     const concurrent = this.concurrent.get(key) ?? 0;
 
@@ -93,6 +94,7 @@ export class MemoryStore implements RateLimitStore {
   }
 
   async getState(key: string, config: AcquireConfig): Promise<LimiterState> {
+    assertTokenBucketHasGate(config);
     const now = Date.now() / 1000;
 
     if (config.algorithm === 'token-bucket') {
